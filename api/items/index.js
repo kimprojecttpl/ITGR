@@ -21,10 +21,13 @@ export default async function handler(req, res) {
   }
 
   const items = data.map((row) => {
-    const { item_status, ...item } = row;
+    const { item_status, cat_no, cat_short, cat_short_th, ...item } = row;
     const status = Array.isArray(item_status) ? item_status[0] : item_status;
     return {
       ...item,
+      catNo: cat_no,
+      catShort: cat_short,
+      catShortTh: cat_short_th,
       status: status?.status ?? "Not Started",
       owner: status?.owner ?? "",
       note: status?.note ?? "",
