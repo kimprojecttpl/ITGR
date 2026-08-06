@@ -1,0 +1,204 @@
+[
+  {
+    "n": 1,
+    "title": "1. IT Organization",
+    "url": "https://drive.google.com/drive/folders/15or7wcItg5phSDtt0COZfyrnTHQg1HRH",
+    "files": [
+      {
+        "t": "Auto Business Corporation_QA Sheet (Legal)",
+        "ty": "xlsx",
+        "url": "https://drive.google.com/file/d/1KP9tZussgkUiXedHgAQHY9kDFN8qHvDK/view"
+      },
+      {
+        "t": "1.1-1.2 Company IT division organization chart",
+        "ty": "folder",
+        "url": "https://drive.google.com/drive/folders/1GpI4OQAvBukBL-LObcm4_QBtyYa_4soG"
+      },
+      {
+        "t": "1.3 IT Infrastructure",
+        "ty": "folder",
+        "url": "https://drive.google.com/drive/folders/1s5J8eX4kmbqPtrFdHGpgnqtgyleQIhHs"
+      }
+    ]
+  },
+  {
+    "n": 2,
+    "title": "2. List of Contracts",
+    "url": "https://drive.google.com/drive/folders/1JEJ62XBJt1HEodaTg7HWdl5wyHMmtdxZ",
+    "files": [
+      {
+        "t": "List of Contracts",
+        "ty": "gsheet",
+        "url": "https://docs.google.com/spreadsheets/d/1CO-EcevD70PmViOeKxIgSYf9ShoHeu44AkNfB5Gatfc/edit"
+      },
+      {
+        "t": "Contracts",
+        "ty": "folder",
+        "url": "https://drive.google.com/drive/folders/1JIjPptcTLvbJ-fENXJtlVb7qqZRzPshU"
+      }
+    ]
+  },
+  {
+    "n": 3,
+    "title": "3. IT Investment",
+    "url": "https://drive.google.com/drive/folders/1vRAaMHKCizxdj52TiQtSDFfLahzUaysI",
+    "files": [
+      {
+        "t": "Project Move_IT CAPEX OPEX (ตัวอย่างของเก่า)",
+        "ty": "gsheet",
+        "url": "https://docs.google.com/spreadsheets/d/17kcFnNjbK58NMl9H7HuDcdTkMTRe3tyKmpSPVMzx4IQ/edit"
+      }
+    ]
+  },
+  {
+    "n": 4,
+    "title": "4. Scalability",
+    "url": "https://drive.google.com/drive/folders/1HElGWF91xGiStw3TBDscxD6gB_Bm6CJX",
+    "files": []
+  },
+  {
+    "n": 5,
+    "title": "5. Internal Control",
+    "url": "https://drive.google.com/drive/folders/14qdUs4mrMkn5CGyMNHqOYAheqxkHzpIv",
+    "files": [
+      {
+        "t": "IT 5.1 IT Contingency Plan (Ver 1.0)",
+        "ty": "pdf",
+        "url": "https://drive.google.com/file/d/1GCm9xr476RqHH9Dj-DRZ8ryMgCC8NT1B/view"
+      },
+      {
+        "t": "IT 5.1 Procedure Software Control (Ver 1.0)",
+        "ty": "pdf",
+        "url": "https://drive.google.com/file/d/19VmybSCBiXcE5e9QtjPBYwpAVxBGG-45/view"
+      },
+      {
+        "t": "IT 5.1 Procedure User Account (Ver 1.0)",
+        "ty": "pdf",
+        "url": "https://drive.google.com/file/d/1QG31Z9IYddvLyYBJwCb4v7Kr9TXJxpT0/view"
+      },
+      {
+        "t": "IT 5.1 Procedure Admin Password Control (Ver 1.0)",
+        "ty": "pdf",
+        "url": "https://drive.google.com/file/d/1st1Qz09FxtaOIzloUhDfDsqjqv-C-WKr/view"
+      },
+      {
+        "t": "IT 5.1 Policy Software Control (Ver 1.0)",
+        "ty": "pdf",
+        "url": "https://drive.google.com/file/d/1XM3pormB8BBQjlyrY0EbMre4-hO55Jst/view"
+      },
+      {
+        "t": "IT 5.1 Procedure Backup Data (Ver 1.0)",
+        "ty": "pdf",
+        "url": "https://drive.google.com/file/d/10CjoMjrW3y-L6e6gk1u4DxknT7krXiLe/view"
+      },
+      {
+        "t": "IT 5.1 Policy Update Patch OS (Ver 1.0)",
+        "ty": "pdf",
+        "url": "https://drive.google.com/file/d/1qnd9X0N_lt1eWVE93mX_lzZu41sGO8lr/view"
+      }
+    ]
+  },
+  {
+    "n": 6,
+    "title": "6. Overall Structure",
+    "url": "https://drive.google.com/drive/folders/1mzZxy0LlwaeEnjR_Pqq51fLiIsOnM-6s",
+    "files": []
+  },
+  {
+    "n": 7,
+    "title": "7. Core Systems",
+    "url": "https://drive.google.com/drive/folders/1xYQrmZ5808z68x1rApJgn_m5F9Lyvgbh",
+    "files": [
+      {
+        "t": "List of vendors",
+        "ty": "gsheet",
+        "url": "https://docs.google.com/spreadsheets/d/1IRzTyjApXhFLJ8Ca0eV4hneoLekwA7xJXeAqaljzFbM/edit"
+      },
+      {
+        "t": "List of application",
+        "ty": "gsheet",
+        "url": "https://docs.google.com/spreadsheets/d/1JLSCn1rz9m0EPM-vu-wZbUkofFa1uNbmbHsIq_514BU/edit"
+      },
+      {
+        "t": "7.1",
+        "ty": "folder",
+        "url": "https://drive.google.com/drive/folders/1wsVFCHLbHtF8t_6WO-0ul7vHIEiRncJD"
+      },
+      {
+        "t": "7.2",
+        "ty": "folder",
+        "url": "https://drive.google.com/drive/folders/1SErrFxt1qQuV3maPxEqxjq_dZ0OAYqAd"
+      },
+      {
+        "t": "7.6",
+        "ty": "folder",
+        "url": "https://drive.google.com/drive/folders/1Syru06jYCWWW357Oq2M3We2oJnCzw_AP"
+      },
+      {
+        "t": "7.9",
+        "ty": "folder",
+        "url": "https://drive.google.com/drive/folders/1IfRtCjmYLjzlWywatgBVD4SAkaPI6yJq"
+      }
+    ]
+  },
+  {
+    "n": 8,
+    "title": "8. IT Assets",
+    "url": "https://drive.google.com/drive/folders/1PFSwpB50mJtR8Eim9uj2XFfyBF88iq-t",
+    "files": [
+      {
+        "t": "Software License",
+        "ty": "folder",
+        "url": "https://drive.google.com/drive/folders/1f0ZcHCwqM3QfYjF_00YNXcs2fWej0vN8"
+      },
+      {
+        "t": "Hardware",
+        "ty": "folder",
+        "url": "https://drive.google.com/drive/folders/1B6VVt0y7mS0kGXgiyESiBy7TNIXGc7-G"
+      }
+    ]
+  },
+  {
+    "n": 9,
+    "title": "9. Information Asset Management",
+    "url": "https://drive.google.com/drive/folders/1IaFQW21o-na5WZ4rJ5UQ5_dXuDLbesOY",
+    "files": []
+  },
+  {
+    "n": 10,
+    "title": "10. IT Security",
+    "url": "https://drive.google.com/drive/folders/1ysANKhSYAofBWhI8n9Rod6drA4j7c4SI",
+    "files": [
+      {
+        "t": "1 - AD security policy",
+        "ty": "gsheet",
+        "url": "https://docs.google.com/spreadsheets/d/112eABxZxB_hoLTE0TCQQFlxtj7dD0E_Z4SJKKaTiu54/edit"
+      },
+      {
+        "t": "2 - VLAN Autocorp 20220511",
+        "ty": "gsheet",
+        "url": "https://docs.google.com/spreadsheets/d/1Uk9HOhbSwActXllIfdn2S-8to23lmyUYtViEVPbxTYY/edit"
+      },
+      {
+        "t": "MIT - Policy",
+        "ty": "pdf",
+        "url": "https://drive.google.com/file/d/1qMKW_4GY84YaG5Xi5jyiohD5sMCGX3i7/view"
+      },
+      {
+        "t": "MIT - Policy Q1",
+        "ty": "pdf",
+        "url": "https://drive.google.com/file/d/1zWKkORLN5gfvV0e29LGc7USCGg8t9imn/view"
+      },
+      {
+        "t": "MIT - Policy Q2",
+        "ty": "pdf",
+        "url": "https://drive.google.com/file/d/1NYm6V6Qs5LJQIxXnpCqNVurRNSnIi9NL/view"
+      },
+      {
+        "t": "ประชาสัมพันธ์แผนกเทคโนโลยีสารสนเทศ",
+        "ty": "pdf",
+        "url": "https://drive.google.com/file/d/1EQz86K1J7s8zZJcU6pYavw42LYu_R1mB/view"
+      }
+    ]
+  }
+]

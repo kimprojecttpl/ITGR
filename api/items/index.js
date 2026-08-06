@@ -1,0 +1,35 @@
+import { getSupabase } from "../../lib/supabase.js";
+import { requireRole } from "../../lib/auth.js";
+
+export default async function handler(req, res) {
+  if (req.method !== "GET") {
+    res.status(405).json({ error: "Method not allowed" });
+    return;
+  }
+  const session = requireRole(req, res, "read_only");
+  if (!session) return;
+
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from("checklist_items")
+    .select("*, item_status(status, owner, note, updated_at)")
+    .order("no", { ascending: true });
+
+  if (error) {
+    res.status(500).json({ error: "Failed to load items" });
+    return;
+  }
+
+  const items = data.map((row) => {
+    const { item_status, ...item } = row;
+    const status = Array.isArray(item_status) ? item_status[0] : item_status;
+    return {
+      ...item,
+      status: status?.status ?? "Not Started",
+      owner: status?.owner ?? "",
+      note: status?.note ?? "",
+    };
+  });
+
+  res.status(200).json({ items });
+}

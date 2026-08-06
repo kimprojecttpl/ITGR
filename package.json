@@ -1,0 +1,17 @@
+{
+  "name": "itgr-dashboard",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "IT Governance Dashboard — AutoCorp (ATC). Static frontend + Vercel BFF + Supabase.",
+  "scripts": {
+    "extract-data": "node scripts/extract-data.mjs",
+    "seed": "node scripts/seed.mjs",
+    "create-user": "node scripts/create-user.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.4",
+    "cookie": "^0.7.1",
+    "jsonwebtoken": "^9.0.2"
+  }
+}

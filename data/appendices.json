@@ -1,0 +1,728 @@
+[
+  {
+    "n": 1,
+    "title": "Rule Requirements",
+    "titleTh": "ข้อกำหนดของระเบียบ (Rule Requirements)",
+    "cat": 1,
+    "catShort": "Security Governance",
+    "catShortTh": "การกำกับดูแลความปลอดภัยสารสนเทศ",
+    "relatedQ": [
+      1,
+      2
+    ],
+    "kind": "sections",
+    "data": [
+      {
+        "header": "IT Security",
+        "rows": [
+          {
+            "cat": "(1)General rules",
+            "req": "①Scope of application: all employees ②Definition of IT security: includes confidentiality, integrity, and availability"
+          },
+          {
+            "cat": "(2)Information security governance",
+            "req": "①Target person of IT Manager: organization, job title ②The duties of IT Manager: operation of systems and IT devices, maintaining IT security, response to incidents, failures ③Business use environment: prohibiting use of private environments for business use, restricting private use of company environments ④Inspection: Self-inspection of IT security establishment/operation, confirmation when introducing cloud services"
+          },
+          {
+            "cat": "(3)Personnel and physical security",
+            "req": "①Training: regular information security training for employees, drills on targeted attack emails ②Security measures of offices, server rooms and data centers: entry/exit restrictions, locking"
+          },
+          {
+            "cat": "(4)Account management",
+            "req": "①Account management procedures: registration/modification/deletion, periodic inventorying, and restricting shared accounts ②Access permissions procedure: Initial setting according to affiliation and  job title, judgment of grant / change / deletion (including inventory)  ③Account authentication:password strength, two-factor authentication, password management"
+          },
+          {
+            "cat": "(5)IT asset management and Measures for terminals",
+            "req": "①IT asset management: Ledger management of IT equipment, software, and service  ②Measures for terminals: user authentication, prevents unauthorized configuration changes and function modifications, conceals recorded electronic information ③Operation of terminals: approval when taking out company-owned PCs with containing confidential information and using external storage media, response in case of theft or loss"
+          },
+          {
+            "cat": "(6)Measures for software and Virus/vulnerabirity",
+            "req": "①Software/services used in business: Approval by IT manager, etc. ②Measures for virus/vulnerabirity: antivirus software installation / operation, security patches application"
+          },
+          {
+            "cat": "(7)Network control",
+            "req": "①Company networks management and control: configuration management, network segment separation, monitoring between internal/external boundaries ②Measures of remote access: restricts access source terminals and connection destinations、two-factor authentication、restricting the downloading ③Using the Internet: web filtering, follows the information asset management rules when sending confidential information"
+          },
+          {
+            "cat": "(8)Measures for business systems and communication tools",
+            "req": "①Measures of business system: measures for security risks, configuration management、concealing confidential information,controling the removal of information ②communication tools (email, chat tools, web conference tools, etc.) used in business: Approval by IT manager, etc., consideration of communication content"
+          },
+          {
+            "cat": "(9)Measures to prepare for incidents,failures,and disasters",
+            "req": "①logs/backup: obtaining, storing, and monitoring ②When a security incident occurs: establishing response procedures, takeing preventive measuresafter ③When a disaster occurs: maintain system availability required to continue business"
+          }
+        ]
+      },
+      {
+        "header": "Information Assets Management",
+        "rows": [
+          {
+            "cat": "(1)Structure for management and promotion",
+            "req": "①Target person of Information Manager: organization, job title ②The duties of Information Manager: Guidance to employees under the control, access permissions management, designation of confidential information, response in case of information leakage  ③Inspection: Self-inspections of  information asset management ④Outsourcing of confidential information management to a third-party: confirmation of compliance with confidential information management policy, determining the management status"
+          },
+          {
+            "cat": "(2)Definition / designation of confidential information",
+            "req": "①Confidential information: information asset that must not be leaked to individuals other than specific parties or related parties. ②Strictly confidential information:information asset that could have a very serious impact on the company's management, business, or subjects of information (customers, etc.) in the event of a leak, etc. ③Strictly confidential information includes the following: ・Insider information ・Information related to misconduct and noncompliance Sensitive personal information of employees  External (customers’ or other) personal information ④Designation of confidential information / confidentiality classification: Information Manager defines considering legal regulations and contents of information assets, etc."
+          },
+          {
+            "cat": "(3)Storage and retention of information assets",
+            "req": "①Electronic information in general: store/save in high-security storage  ② Digital information classified as highly confidential: Managed separately from other information assets, and the Information Manager periodically provides confirmation and guidance on the storage and retention of confidential information ③How confidential information is stored/saved and provides guidance: Information Manager regularly confirms  to those under their supervision"
+          },
+          {
+            "cat": "(4)Confidential information access management",
+            "req": "①Restriction users with access to confidential information: those who need it for business ②Restriction users with access to strictly confidential information: extremely limited among employees ③When allowing individuals to access confidential information: approval is obtained from the Information Manager"
+          },
+          {
+            "cat": "(5)Prevention of leakage of information assets",
+            "req": "① Handling confidential information in locations where there are many and unspecified people: Generally prohibited; if required for business, implement measures to prevent information leaks, and keep removed confidential information to the minimum required for business purposes after obtaining approval from the Information Manager."
+          },
+          {
+            "cat": "(6)Sharing of strictly confidential information",
+            "req": "① General information assets: Do not use or provide outside the company without due cause.  ②For electronic information, when shareing strictly confidential information inside/outside the company or shareing other confidential information outside the company: generally store/save information assets on high-security storage ③In cases where information assets concerning the acquisition/loss of rights and obligations such as contracts are to be received: confirming the signature of a legitimate responsible person"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "n": 2,
+    "title": "List of Password Requirements",
+    "titleTh": "รายการข้อกำหนดรหัสผ่าน (Password Requirements)",
+    "cat": 2,
+    "catShort": "Account Management",
+    "catShortTh": "การจัดการบัญชีผู้ใช้",
+    "relatedQ": [
+      21,
+      22
+    ],
+    "kind": "pwd",
+    "data": [
+      {
+        "no": "1",
+        "setting": "Length",
+        "req": "12 characters or longer",
+        "level": "Required",
+        "sysctrl": "〇",
+        "alt": "Both ① and ② below must be satisfied ① Length: 8 characters or longer ② Multifactor authentication Must satisfy all of the following if the above cannot be satisfied A) Monitor whether lock settings are released B) Prohibit automatic release after a certain period of time passes following erroneous input lock (user application required) C) Check with relevant users at least once per month to determine whether lock was due to erroneous input by said user"
+      },
+      {
+        "no": "2",
+        "setting": "Complexity",
+        "req": "Use at least three types of characters (uppercase letters, lowercase letters, numbers, and symbols)",
+        "level": "Required",
+        "sysctrl": "〇",
+        "alt": "In order to ensure that deciphering will take a sufficiently long time during a brute force attack, a password must have 15 or more characters if only letters are used or a combination of letters and numbers (passwords consisting of numbers only or symbols only are not allowed)"
+      },
+      {
+        "no": "3",
+        "setting": "Account locking after incorrect password entry",
+        "req": "Lockout after 5 or fewer consecutive unsuccessful login attempts",
+        "level": "Required",
+        "sysctrl": "〇",
+        "alt": "(N/A)"
+      },
+      {
+        "no": "",
+        "setting": "",
+        "req": "Do not automatically unlock the account after a certain period of time (user must request this be done)",
+        "level": "Recommended",
+        "sysctrl": "〇",
+        "alt": "-"
+      },
+      {
+        "no": "4",
+        "setting": "Character string restrictions",
+        "req": "Educate users so they will not use the following character strings for their passwords ・Their user IDs, first and last names ・Repeating or sequential character strings ・Names of services or people, etc. ・Sequences of adjacent letters on the keyboard ・Characters contained in previously leaked passwords",
+        "level": "Required",
+        "sysctrl": "-",
+        "alt": "(N/A)"
+      },
+      {
+        "no": "",
+        "setting": "",
+        "req": "Prohibit use of the character strings above in each system",
+        "level": "Recommended",
+        "sysctrl": "〇",
+        "alt": "-"
+      },
+      {
+        "no": "5",
+        "setting": "Reuse restrictions",
+        "req": "Educate users so they will not reuse passwords",
+        "level": "Required",
+        "sysctrl": "-",
+        "alt": "(N/A)"
+      },
+      {
+        "no": "",
+        "setting": "",
+        "req": "Specify the maximum number of generations that is manageable in each system",
+        "level": "Recommended",
+        "sysctrl": "〇",
+        "alt": "-"
+      },
+      {
+        "no": "6",
+        "setting": "Periodic password change*",
+        "req": "General accounts: Not required",
+        "level": "-",
+        "sysctrl": "-",
+        "alt": "-"
+      },
+      {
+        "no": "",
+        "setting": "",
+        "req": "Administrator accounts: Ensure that passwords must be changed within 3 months",
+        "level": "Required",
+        "sysctrl": "-",
+        "alt": "(N/A)"
+      },
+      {
+        "no": "",
+        "setting": "",
+        "req": "Automated by system (such as requiring periodic changing on password only for OS/DB accounts)",
+        "level": "Recommended",
+        "sysctrl": "〇",
+        "alt": "-"
+      },
+      {
+        "no": "7",
+        "setting": "Storing",
+        "req": "Do not hardcode passwords.",
+        "level": "Required",
+        "sysctrl": "-",
+        "alt": "(N/A)"
+      },
+      {
+        "no": "",
+        "setting": "",
+        "req": "Hash passwords, or encrypt them if this is not possible",
+        "level": "Recommended",
+        "sysctrl": "〇",
+        "alt": "ー"
+      }
+    ],
+    "note": "*Automatically display an error message when a password that does not meet the requirements is entered, etc."
+  },
+  {
+    "n": 3,
+    "title": "List of Logs to Obtain",
+    "titleTh": "รายการบันทึก Log ที่ต้องจัดเก็บ (Logs to Obtain)",
+    "cat": 7,
+    "catShort": "Incident Preparedness",
+    "catShortTh": "การเตรียมพร้อมรับเหตุการณ์",
+    "relatedQ": [
+      74,
+      75,
+      76
+    ],
+    "kind": "logs",
+    "data": [
+      {
+        "no": "1",
+        "system": "Network　equipment",
+        "sub": "Remote access system (VPN device, VDI server)",
+        "type": "Authentication",
+        "item": "Originating IP, username, and authentication result"
+      },
+      {
+        "no": "2",
+        "system": "Network　equipment",
+        "sub": "Remote access system (VPN device, VDI server)",
+        "type": "Operation",
+        "item": "Setting changes"
+      },
+      {
+        "no": "3",
+        "system": "Network　equipment",
+        "sub": "Firewall",
+        "type": "Communication",
+        "item": "Originating IP, destination IP, communication port, communication results, and traffic volume"
+      },
+      {
+        "no": "4",
+        "system": "Network　equipment",
+        "sub": "Firewall",
+        "type": "Operation",
+        "item": "Setting changes"
+      },
+      {
+        "no": "5",
+        "system": "Network　equipment",
+        "sub": "Web proxy",
+        "type": "Communication",
+        "item": "Source of communicating IP, destination URL, and traffic volume"
+      },
+      {
+        "no": "6",
+        "system": "Network　equipment",
+        "sub": "Web proxy",
+        "type": "Operation",
+        "item": "Setting changes"
+      },
+      {
+        "no": "7",
+        "system": "Network　equipment",
+        "sub": "DNS server",
+        "type": "Communication",
+        "item": "Source of communicating IP, contents of query response"
+      },
+      {
+        "no": "8",
+        "system": "Network　equipment",
+        "sub": "DNS server",
+        "type": "Operation",
+        "item": "Setting changes"
+      },
+      {
+        "no": "9",
+        "system": "Important systems (including cloud services)",
+        "sub": "File storage",
+        "type": "Authentication",
+        "item": "Source of connecting IP, username, authentication result"
+      },
+      {
+        "no": "10",
+        "system": "Important systems (including cloud services)",
+        "sub": "File storage",
+        "type": "Operation",
+        "item": "Account creation, changes and deletion, file operations in general (view, upload, copy, download, move, update, delete, etc.), and setting changes"
+      },
+      {
+        "no": "11",
+        "system": "Important systems (including cloud services)",
+        "sub": "Email",
+        "type": "Authentication",
+        "item": "Source of connecting IP, username, authentication result"
+      },
+      {
+        "no": "12",
+        "system": "Important systems (including cloud services)",
+        "sub": "Email",
+        "type": "Operation",
+        "item": "Account creation, changes and deletion, sender, recipient, subject, with or without file attachment, and setting changes"
+      },
+      {
+        "no": "13",
+        "system": "Important systems (including cloud services)",
+        "sub": "Authentication server",
+        "type": "Authentication",
+        "item": "Source of connecting IP, username, authentication result"
+      },
+      {
+        "no": "14",
+        "system": "Important systems (including cloud services)",
+        "sub": "Authentication server",
+        "type": "Operation",
+        "item": "Create, modify, and delete account, grant, modify and delete authorization, change settings"
+      },
+      {
+        "no": "15",
+        "system": "Important systems (including cloud services)",
+        "sub": "Other important systems*2",
+        "type": "Authentication",
+        "item": "Source of connecting IP, username, authentication result"
+      },
+      {
+        "no": "16",
+        "system": "Important systems (including cloud services)",
+        "sub": "Other important systems*2",
+        "type": "Operation",
+        "item": "Account creation, changes, and deletion, setting changes, and authorization changes"
+      },
+      {
+        "no": "17",
+        "system": "PC",
+        "sub": "Other important systems*2",
+        "type": "Authentication",
+        "item": "Username"
+      },
+      {
+        "no": "18",
+        "system": "PC",
+        "sub": "Other important systems*2",
+        "type": "Operation",
+        "item": "Command execution, USB operation"
+      }
+    ]
+  },
+  {
+    "n": 4,
+    "title": "Detective Scenario List",
+    "titleTh": "รายการสถานการณ์การตรวจจับ (Detective Scenarios)",
+    "cat": 7,
+    "catShort": "Incident Preparedness",
+    "catShortTh": "การเตรียมพร้อมรับเหตุการณ์",
+    "relatedQ": [
+      79,
+      81,
+      92
+    ],
+    "kind": "scenario",
+    "data": [
+      {
+        "no": "1",
+        "scenario": "Traffic with C&C server",
+        "src": "PC, network device",
+        "edr": "Required",
+        "siem": "Required",
+        "store": "-",
+        "rule": "Check network device’s destination IP data (logs) with malicious domains/IPs (threat data)"
+      },
+      {
+        "no": "2",
+        "scenario": "Executing files with malicious hash values",
+        "src": "PC",
+        "edr": "Required",
+        "siem": "Required",
+        "store": "-",
+        "rule": "Check PC operation logs and malicious hash value file information (threat information)"
+      },
+      {
+        "no": "3",
+        "scenario": "Suspicious devices accessing authentication devices",
+        "src": "Authentication server",
+        "edr": "-",
+        "siem": "Required",
+        "store": "-",
+        "rule": "Check AD server, etc. authentication logs and malicious domain/IP (threat information)"
+      },
+      {
+        "no": "4",
+        "scenario": "Malware infection",
+        "src": "PC",
+        "edr": "Required",
+        "siem": "Required",
+        "store": "-",
+        "rule": "Alert generated by antivirus or EDR installed on PCs"
+      },
+      {
+        "no": "5",
+        "scenario": "Heavy downloading, or uploading to external source from Box",
+        "src": "Highly secure file storage, network device",
+        "edr": "Required",
+        "siem": "Either ① or ② is required ① Detected by SIEM, ② Detected by highly secure storage",
+        "store": "",
+        "rule": "・Check operation logs and data size information of highly secure file storage, PC operation logs, and network device logs, and detect data removal from highly secure storage ・Detect data removal exceeding a certain size (such as 10 MB or more) in network device logs"
+      },
+      {
+        "no": "6",
+        "scenario": "Statistically suspicious behavior compared to normal condition",
+        "src": "Highly secure file storage",
+        "edr": "-",
+        "siem": "Either ① or ② is required ① Detected by SIEM, ② Detected by highly secure storage",
+        "store": "",
+        "rule": "・Detect large downloads from highly secure file storage operation logs, data size information, and applicable user information"
+      },
+      {
+        "no": "7",
+        "scenario": "Behavior that is statistically more suspicious than normal (high traffic at night and holidays, downloading more data than usual, etc.)",
+        "src": "Network device",
+        "edr": "-",
+        "siem": "Required",
+        "store": "-",
+        "rule": "Check statistical information in the communication logs combining with destination data"
+      },
+      {
+        "no": "8",
+        "scenario": "Granting of access permissions to an account that is highly likely to be for personal use (such as a free email address)",
+        "src": "Highly secure file storage",
+        "edr": "-",
+        "siem": "Either ① or ② is required ① Detected by SIEM, ② Detected by highly secure storage",
+        "store": "",
+        "rule": "Check highly secure file storage operation logs (logs from when permission was added) and free email address domain information"
+      },
+      {
+        "no": "9",
+        "scenario": "EDR disabled/uninstalled",
+        "src": "PC",
+        "edr": "Required",
+        "siem": "Required",
+        "store": "-",
+        "rule": "Define SIEM detection rules for when EDR is disabled on a PC"
+      },
+      {
+        "no": "10",
+        "scenario": "Creation of administrator account",
+        "src": "Authentication server",
+        "edr": "-",
+        "siem": "Required",
+        "store": "-",
+        "rule": "Detect administrator account creation operations (such as adding an account to an administrator group) from AD logs"
+      }
+    ]
+  },
+  {
+    "n": 5,
+    "title": "Information Asset Management Standards Sample",
+    "titleTh": "ตัวอย่างมาตรฐานการจัดการสารสนเทศ (Info Asset Mgmt)",
+    "cat": 8,
+    "catShort": "Handling of Info Assets",
+    "catShortTh": "การจัดการสารสนเทศ",
+    "relatedQ": [
+      87
+    ],
+    "kind": "assets",
+    "data": [
+      {
+        "no": "1",
+        "cat": "Personal information (internal)",
+        "name": "Documents related to salary (documents related to salary, bonus, pay rise, treatment, retirement benefit, premium calculation, withholding, etc.)",
+        "level": "Strictly confidential",
+        "retention": "Permanent"
+      },
+      {
+        "no": "2",
+        "cat": "Personal information (internal)",
+        "name": "Documents related to attendance (documents related to attendance, business trips (including overseas trips), leave of absence, etc.)",
+        "level": "Strictly confidential",
+        "retention": "10 years"
+      },
+      {
+        "no": "3",
+        "cat": "Personal information (internal)",
+        "name": "Documents related to appointment (documents related to employment, personnel evaluation, transfer, reward and punishment, secondment, retirement, etc.)",
+        "level": "Strictly confidential",
+        "retention": "Permanent"
+      },
+      {
+        "no": "4",
+        "cat": "Personal information (internal)",
+        "name": "ID documents (driver's license, passport, health insurance card, etc.)",
+        "level": "Strictly confidential",
+        "retention": "10 years"
+      },
+      {
+        "no": "5",
+        "cat": "Personal information (internal)",
+        "name": "Documents containing sensitive personal information (emergency contact list, health check record/report, documents related to employee loans, etc.)",
+        "level": "Strictly confidential",
+        "retention": "Permanent"
+      },
+      {
+        "no": "6",
+        "cat": "Personal information (internal)",
+        "name": "Documents related to biography (documents related to employees' careers, job experience, qualifications obtained, etc.)",
+        "level": "Confidential",
+        "retention": "Permanent"
+      },
+      {
+        "no": "7",
+        "cat": "Personal information (internal)",
+        "name": "Documents listing less sensitive personal information (documents related to qualifications held, extension number, employee number, own department, title, etc.)",
+        "level": "Confidential",
+        "retention": "-"
+      },
+      {
+        "no": "8",
+        "cat": "Personal information (external)",
+        "name": "Documents related to external organizations (documents related to delegation to executives of external organizations, etc.)",
+        "level": "Strictly confidential",
+        "retention": "3 years"
+      },
+      {
+        "no": "9",
+        "cat": "Personal information (external)",
+        "name": "Documents related to shareholders (statement of shareholders' equity, documents related to change of items stated in shareholder registry, etc.)",
+        "level": "Strictly confidential",
+        "retention": "10 years"
+      },
+      {
+        "no": "10",
+        "cat": "Personal information (external)",
+        "name": "Documents related to customers (customer contact list, business card management documents, etc.)",
+        "level": "Strictly confidential",
+        "retention": "-"
+      },
+      {
+        "no": "11",
+        "cat": "Personal information (external)",
+        "name": "Documents related to recruitment before employment (entry sheet, resume, evaluation sheet, documents related to prospective employees, etc.)",
+        "level": "Strictly confidential",
+        "retention": "-"
+      },
+      {
+        "no": "12",
+        "cat": "Personal information (external)",
+        "name": "Documents related to counterparties (counterparty contact list, business card management documents, etc.)",
+        "level": "Strictly confidential",
+        "retention": "-"
+      },
+      {
+        "no": "13",
+        "cat": "Management Committee",
+        "name": "Materials for management meetings and minutes thereof, etc.(including insider information)",
+        "level": "Strictly confidential",
+        "retention": "10 years"
+      },
+      {
+        "no": "14",
+        "cat": "Management Committee",
+        "name": "Materials for management meetings, shareholders' meetings, department meetings and committees and minutes thereof, etc.(excluding insider information)",
+        "level": "Confidential",
+        "retention": "10 years"
+      },
+      {
+        "no": "15",
+        "cat": "Request for approval",
+        "name": "Ledger of official approval requests, documents of official approval requests, applications for change in contents of official approval requests, etc. (including insider information)",
+        "level": "Strictly confidential",
+        "retention": "Permanent"
+      },
+      {
+        "no": "16",
+        "cat": "Request for approval",
+        "name": "Ledger of official approval requests, documents of official approval requests, applications for change in contents of official approval requests, lower-level approval application documents, applications for change in contents of lower-level approval application documents, etc. (excluding insider information)",
+        "level": "Confidential",
+        "retention": "Permanent"
+      },
+      {
+        "no": "17",
+        "cat": "Management Plan",
+        "name": "Documents related to company-wide management plans (establishment or revision or abolishment of organizational structure/organization, etc.) (including insider information)",
+        "level": "Strictly confidential",
+        "retention": "Permanent"
+      },
+      {
+        "no": "18",
+        "cat": "Management Plan",
+        "name": "Documents related to company-wide management plans, etc.(excluding insider information)",
+        "level": "Confidential",
+        "retention": "Permanent"
+      },
+      {
+        "no": "19",
+        "cat": "Budget/financial results",
+        "name": "Financial results (balance sheet and income statement for publication) and relevant documents (including insider information)",
+        "level": "Strictly confidential",
+        "retention": "Permanent"
+      },
+      {
+        "no": "20",
+        "cat": "Budget/financial results",
+        "name": "Securities reports, monthly financial results, major accounting books, journal entry reports, company-wide budget/prospects, etc. (excluding insider information)",
+        "level": "Confidential",
+        "retention": "Permanent"
+      },
+      {
+        "no": "21",
+        "cat": "Audit/CSA",
+        "name": "Documents related to external audit (audit report, etc.)",
+        "level": "Strictly confidential",
+        "retention": "Permanent"
+      },
+      {
+        "no": "22",
+        "cat": "Audit/CSA",
+        "name": "Documents related to internal audit (internal audit report, control self-assessment report and administrative hand-over documents)",
+        "level": "Confidential",
+        "retention": "10 years"
+      },
+      {
+        "no": "23",
+        "cat": "Tax",
+        "name": "Corporate tax return, documents related to record of correspondence over tax audit",
+        "level": "Strictly confidential",
+        "retention": "10 years"
+      },
+      {
+        "no": "24",
+        "cat": "Tax",
+        "name": "Consumption tax/local tax, etc. returns, ledger of tax payment, documents prepared related to tax returns",
+        "level": "Confidential",
+        "retention": "10 years"
+      },
+      {
+        "no": "25",
+        "cat": "Finance/accounting",
+        "name": "Documents related to securities and shares",
+        "level": "Confidential",
+        "retention": "Permanent"
+      },
+      {
+        "no": "26",
+        "cat": "Finance/accounting",
+        "name": "Documents related to settlement, business accounting, treasury, foreign exchange and fixed claims",
+        "level": "Confidential",
+        "retention": "10 years"
+      },
+      {
+        "no": "27",
+        "cat": "General affairs",
+        "name": "Documents related to real estate and welfare",
+        "level": "Confidential",
+        "retention": "Permanent"
+      },
+      {
+        "no": "28",
+        "cat": "General affairs",
+        "name": "Documents related to purchase, leasing and management of office equipment and furniture, etc.",
+        "level": "Internal use only",
+        "retention": "3 years"
+      },
+      {
+        "no": "29",
+        "cat": "Regulations",
+        "name": "Various regulations (regulations, bylaws, circulars, letters, etc.) and documents related to establishment, revision and abolishment of various regulations",
+        "level": "Internal use only",
+        "retention": "Permanent"
+      },
+      {
+        "no": "30",
+        "cat": "Contract",
+        "name": "Basic contracts, individual contracts, etc.",
+        "level": "Confidential",
+        "retention": "10 years"
+      },
+      {
+        "no": "31",
+        "cat": "Litigation",
+        "name": "Judgment documents and other documents equivalent thereto related to litigation, mediation, arbitration, etc. (including insider information)",
+        "level": "Strictly confidential",
+        "retention": "10 years"
+      },
+      {
+        "no": "32",
+        "cat": "Litigation",
+        "name": "Judgment documents and other documents equivalent thereto related to litigation, mediation, arbitration, etc. (excluding insider information)",
+        "level": "Confidential",
+        "retention": "10 years"
+      },
+      {
+        "no": "33",
+        "cat": "Compliance",
+        "name": "Documents related to response to noncompliance issues including scandals, reporting, internal investigations, etc.",
+        "level": "Strictly confidential",
+        "retention": "10 years"
+      },
+      {
+        "no": "34",
+        "cat": "Compliance",
+        "name": "Documents related to applications for advance screening of counterparty, report of screening result, government-related business",
+        "level": "Confidential",
+        "retention": "9 years"
+      },
+      {
+        "no": "35",
+        "cat": "Public relations",
+        "name": "Documents related to timely disclosure of corporate information, etc. (including pre-disclosure/insider information)",
+        "level": "Strictly confidential",
+        "retention": "-"
+      },
+      {
+        "no": "36",
+        "cat": "Public relations",
+        "name": "Documents related to timely disclosure of corporate information, etc. (excluding pre-disclosure/insider information)",
+        "level": "Confidential",
+        "retention": "-"
+      },
+      {
+        "no": "37",
+        "cat": "Public relations",
+        "name": "Documents related to the environment, CSR, advertisement and public relations",
+        "level": "Internal use only",
+        "retention": "-"
+      }
+    ]
+  }
+]
