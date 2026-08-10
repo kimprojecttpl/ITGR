@@ -12,7 +12,7 @@ export default async function handler(req, res) {
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from("checklist_items")
-    .select("*, item_status(status, owner, note, updated_at)")
+    .select("*, item_status(status, owner, note, clickup_url, workflow_state, updated_at)")
     .order("no", { ascending: true });
 
   if (error) {
@@ -31,6 +31,8 @@ export default async function handler(req, res) {
       status: status?.status ?? "Not Started",
       owner: status?.owner ?? "",
       note: status?.note ?? "",
+      clickupUrl: status?.clickup_url ?? "",
+      workflowState: status?.workflow_state ?? "Not Started",
     };
   });
 

@@ -1,15 +1,19 @@
 import { getSupabase } from "../../lib/supabase.js";
-import { requireRole } from "../../lib/auth.js";
+import { requireAnyRole } from "../../lib/auth.js";
 
-const VALID_STATUSES = ["Not Started", "In Progress", "Compliant", "Partial", "Not Applicable"];
-const EDITABLE_FIELDS = ["status", "owner", "note"];
+const VALID_STATUSES = ["Not Started", "In Progress", "Compliant", "Partial", "Not Compliant"];
+const EDITABLE_FIELDS = ["owner", "note", "clickup_url"];
 
 export default async function handler(req, res) {
   if (req.method !== "PATCH") {
     res.status(405).json({ error: "Method not allowed" });
     return;
   }
-  const session = requireRole(req, res, "read_write");
+  // `user` prepares Owner/Evidence/ClickUp; `admin` can override anything
+  // (including a direct status change) as a break-glass path. `reviewer` and
+  // `approver` don't touch these fields — they act only through
+  // /review and /approve.
+  const session = requireAnyRole(req, res, ["user", "admin"]);
   if (!session) return;
 
   const itemNo = Number(req.query.no);
@@ -23,12 +27,19 @@ export default async function handler(req, res) {
   for (const field of EDITABLE_FIELDS) {
     if (field in body) updates[field] = body[field];
   }
+  if ("status" in body) {
+    if (session.role !== "admin") {
+      res.status(403).json({ error: "Status changes go through the approval workflow, not a direct edit" });
+      return;
+    }
+    if (!VALID_STATUSES.includes(body.status)) {
+      res.status(400).json({ error: "Invalid status value" });
+      return;
+    }
+    updates.status = body.status;
+  }
   if (Object.keys(updates).length === 0) {
     res.status(400).json({ error: "No editable fields provided" });
-    return;
-  }
-  if (updates.status !== undefined && !VALID_STATUSES.includes(updates.status)) {
-    res.status(400).json({ error: "Invalid status value" });
     return;
   }
 
@@ -36,7 +47,7 @@ export default async function handler(req, res) {
 
   const { data: existing, error: fetchErr } = await supabase
     .from("item_status")
-    .select("status, owner, note")
+    .select("status, owner, note, clickup_url, workflow_state")
     .eq("item_no", itemNo)
     .maybeSingle();
   if (fetchErr) {
@@ -46,6 +57,12 @@ export default async function handler(req, res) {
   if (!existing) {
     res.status(404).json({ error: "Item not found" });
     return;
+  }
+
+  // Quiet UX nicety: a User's first edit on an untouched item moves it out
+  // of "Not Started" without requiring a separate manual step.
+  if (session.role === "user" && existing.status === "Not Started" && updates.status === undefined) {
+    updates.status = "In Progress";
   }
 
   const { error: updateErr } = await supabase

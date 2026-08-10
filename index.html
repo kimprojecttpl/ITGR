@@ -25,10 +25,28 @@ const RISK_ORDER = ["Very High","High","Middle","Low"];
 const RISK_TH = {"Very High":"สูงมาก","High":"สูง","Middle":"ปานกลาง","Low":"ต่ำ","":"-"};
 const RISK_COLOR = {"Very High":"#dc2626","High":"#ea580c","Middle":"#d97706","Low":"#0ea5e9","":"#94a3b8"};
 const RISK_BG = {"Very High":"bg-red-100 text-red-700","High":"bg-orange-100 text-orange-700","Middle":"bg-amber-100 text-amber-700","Low":"bg-sky-100 text-sky-700","":"bg-slate-100 text-slate-500"};
-const STATUSES = ["Not Started","In Progress","Compliant","Partial","Not Applicable"];
-const STATUS_TH = {"Not Started":"ยังไม่เริ่ม","In Progress":"กำลังดำเนินการ","Compliant":"สอดคล้อง","Partial":"สอดคล้องบางส่วน","Not Applicable":"ไม่เกี่ยวข้อง"};
-const STATUS_COLOR = {"Not Started":"#94a3b8","In Progress":"#2563eb","Compliant":"#16a34a","Partial":"#d97706","Not Applicable":"#64748b"};
-const STATUS_BG = {"Not Started":"bg-slate-100 text-slate-600","In Progress":"bg-blue-100 text-blue-700","Compliant":"bg-green-100 text-green-700","Partial":"bg-amber-100 text-amber-700","Not Applicable":"bg-slate-200 text-slate-600"};
+// v1.3: "Not Applicable" is retired — the value is repurposed to mean
+// "Not Compliant" (Approver's NC decision), per stakeholder decision in
+// PRD.md. It no longer gets full credit in progressPct() below.
+const STATUSES = ["Not Started","In Progress","Compliant","Partial","Not Compliant"];
+const STATUS_TH = {"Not Started":"ยังไม่เริ่ม","In Progress":"กำลังดำเนินการ","Compliant":"สอดคล้อง","Partial":"สอดคล้องบางส่วน (มีเงื่อนไข)","Not Compliant":"ไม่ผ่าน"};
+const STATUS_COLOR = {"Not Started":"#94a3b8","In Progress":"#2563eb","Compliant":"#16a34a","Partial":"#d97706","Not Compliant":"#dc2626"};
+const STATUS_BG = {"Not Started":"bg-slate-100 text-slate-600","In Progress":"bg-blue-100 text-blue-700","Compliant":"bg-green-100 text-green-700","Partial":"bg-amber-100 text-amber-700","Not Compliant":"bg-red-100 text-red-700"};
+
+// Workflow state (v1.3) — more granular than `status`; drives which
+// action buttons the Tracker shows. `status` above stays the simple
+// value the Overview/radar/grade calculations already understand.
+const WF_TH = {
+  "Not Started":"ยังไม่เริ่ม","In Progress":"กำลังดำเนินการ","Pending Review":"รอตรวจทาน",
+  "Pending Approval":"รออนุมัติ","Rejected":"ถูกตีกลับ","Compliant":"สอดคล้อง",
+  "Complied with Condition":"สอดคล้องมีเงื่อนไข","Not Compliant":"ไม่ผ่าน"
+};
+const WF_BG = {
+  "Not Started":"bg-slate-100 text-slate-600","In Progress":"bg-blue-100 text-blue-700",
+  "Pending Review":"bg-violet-100 text-violet-700","Pending Approval":"bg-indigo-100 text-indigo-700",
+  "Rejected":"bg-red-100 text-red-700","Compliant":"bg-green-100 text-green-700",
+  "Complied with Condition":"bg-amber-100 text-amber-700","Not Compliant":"bg-red-100 text-red-700"
+};
 const GRADE_COLOR = {A:"#16a34a",B:"#0ea5e9",C:"#d97706",D:"#ea580c",E:"#dc2626"};
 const GRADE_BG = {A:"bg-green-100 text-green-700",B:"bg-sky-100 text-sky-700",C:"bg-amber-100 text-amber-700",D:"bg-orange-100 text-orange-700",E:"bg-red-100 text-red-700"};
 function gradeFor(pct){ return pct>=80?'A':pct>=60?'B':pct>=40?'C':pct>=20?'D':'E'; }
@@ -41,8 +59,14 @@ let ME = null; // { name, role } — set by init() after /api/me
 function priTh(p){ return p==="◎"?"สูงสุด":(p==="〇"?"สำคัญ":"ปกติ"); }
 function priEn(p){ return p==="◎"?"Top Priority":(p==="〇"?"Priority":"Standard"); }
 function esc(s){ const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
-function canEdit(){ return ME && (ME.role==='admin' || ME.role==='read_write'); }
+// v1.3 role helpers — `user`/`reviewer`/`approver` replace the old
+// `read_write` tier, each scoped to one stage of the approval workflow.
+// `admin` can act at any stage (break-glass / cover for absence).
 function isAdmin(){ return ME && ME.role==='admin'; }
+function canEditItem(){ return ME && (ME.role==='admin' || ME.role==='user'); }
+function canSubmit(){ return canEditItem(); }
+function canReview(){ return ME && (ME.role==='admin' || ME.role==='reviewer'); }
+function canApprove(){ return ME && (ME.role==='admin' || ME.role==='approver'); }
 
 let CATS = [];
 function rebuildCats(){
@@ -86,7 +110,7 @@ function radarChart(items,size){
   return '<svg width="'+size+'" height="'+size+'" viewBox="0 0 '+size+' '+size+'">'+rings+axes+dataPoly+dots+tickLabels+'</svg>';
 }
 function statusCounts(filterFn){
-  const c={"Not Started":0,"In Progress":0,"Compliant":0,"Partial":0,"Not Applicable":0};
+  const c={"Not Started":0,"In Progress":0,"Compliant":0,"Partial":0,"Not Compliant":0};
   ITEMS.filter(filterFn||(()=>true)).forEach(it=>{
     const st=(STATE[it.no]&&STATE[it.no].status)||"Not Started"; c[st]++;
   });
@@ -96,7 +120,10 @@ function progressPct(filterFn){
   const arr=ITEMS.filter(filterFn||(()=>true));
   if(!arr.length) return 0;
   let done=0;
-  arr.forEach(it=>{ const st=(STATE[it.no]&&STATE[it.no].status); if(st==="Compliant"||st==="Not Applicable") done++; else if(st==="Partial") done+=0.5; });
+  // Only Compliant counts full and Partial counts half — "Not Compliant"
+  // (formerly "Not Applicable") must NOT get credit here, or a failed
+  // item would silently inflate the compliance percentage.
+  arr.forEach(it=>{ const st=(STATE[it.no]&&STATE[it.no].status); if(st==="Compliant") done++; else if(st==="Partial") done+=0.5; });
   return Math.round(done/arr.length*100);
 }
 
@@ -124,7 +151,22 @@ function header(){
    +'</div></div></header>';
 }
 function roleLabel(r){
-  return r==='admin'?'ผู้ดูแลระบบ / Admin':(r==='read_write'?'แก้ไขได้ / Read-Write':'อ่านอย่างเดียว / Read-Only');
+  return {
+    admin:'ผู้ดูแลระบบ / Admin',
+    user:'ผู้เตรียมข้อมูล / User',
+    reviewer:'ผู้ตรวจทาน / Reviewer',
+    approver:'ผู้อนุมัติ / Approver',
+    read_only:'อ่านอย่างเดียว / Read-Only'
+  }[r] || r;
+}
+// Items waiting on the current user's action — drives the nav badge.
+function pendingForMe(){
+  if(!ME) return 0;
+  if(ME.role==='reviewer') return ITEMS.filter(it=>(STATE[it.no]&&STATE[it.no].workflowState)==='Pending Review').length;
+  if(ME.role==='approver') return ITEMS.filter(it=>(STATE[it.no]&&STATE[it.no].workflowState)==='Pending Approval').length;
+  if(ME.role==='user') return ITEMS.filter(it=>(STATE[it.no]&&STATE[it.no].workflowState)==='Rejected').length;
+  if(ME.role==='admin') return ITEMS.filter(it=>['Pending Review','Pending Approval'].includes(STATE[it.no]&&STATE[it.no].workflowState)).length;
+  return 0;
 }
 function nav(){
   const tabs=[
@@ -134,9 +176,11 @@ function nav(){
     ["appendix","\u{1F4D1} ภาคผนวก","Appendix 1–5"],
     ["reference","\u{1F4DA} คลังเอกสารอ้างอิง","Reference Library"]];
   if(isAdmin()) tabs.push(["admin","\u{1F512} ผู้ดูแลระบบ","Admin"]);
+  const pending=pendingForMe();
   return '<div class="bg-blue-900 noprint"><div class="max-w-7xl mx-auto px-4 flex gap-1 overflow-x-auto">'+
-    tabs.map(t=>'<button onclick="setTab(\''+t[0]+'\')" class="tabbtn '+(TAB===t[0]?'active':'text-blue-100 hover:bg-blue-800')+' px-4 py-2 text-sm font-medium rounded-t-lg whitespace-nowrap transition leading-tight text-left">'
-      +t[1]+'<span class="block text-[10px] '+(TAB===t[0]?'text-blue-400':'text-blue-300/70')+' font-normal">'+t[2]+'</span></button>').join('')
+    tabs.map(t=>'<button onclick="setTab(\''+t[0]+'\')" class="tabbtn relative '+(TAB===t[0]?'active':'text-blue-100 hover:bg-blue-800')+' px-4 py-2 text-sm font-medium rounded-t-lg whitespace-nowrap transition leading-tight text-left">'
+      +t[1]+(t[0]==='tracker'&&pending>0?' <span class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold align-middle">'+pending+'</span>':'')
+      +'<span class="block text-[10px] '+(TAB===t[0]?'text-blue-400':'text-blue-300/70')+' font-normal">'+t[2]+'</span></button>').join('')
   +'</div></div>';
 }
 function footer(){
@@ -299,22 +343,31 @@ function tracker(){
   });
   const sel=(id,opts,val,ph)=>`<select id="${id}" class="text-xs border border-slate-300 rounded-lg px-2 py-1.5 bg-white">
     <option value="">${ph}</option>${opts.map(o=>`<option value="${o[0]}" ${val===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select>`;
-  const editable=canEdit();
+  const editable=canEditItem();
   const rows=arr.map(it=>{
-    const st=(STATE[it.no]&&STATE[it.no].status)||"Not Started";
-    const owner=(STATE[it.no]&&STATE[it.no].owner)||"";
-    const note=(STATE[it.no]&&STATE[it.no].note)||"";
+    const s=STATE[it.no]||{};
+    const st=s.status||"Not Started";
+    const wf=s.workflowState||"Not Started";
+    const owner=s.owner||"";
+    const note=s.note||"";
+    const clickupUrl=s.clickupUrl||"";
     const open=EXPANDED[it.no];
-    const statusCell=editable
-      ?`<select onchange="setField(${it.no},'status',this.value)" class="text-[11px] rounded-full px-2 py-1 border-0 font-medium ${STATUS_BG[st]}">
-          ${STATUSES.map(s=>`<option value="${s}" ${s===st?'selected':''}>${STATUS_TH[s]} / ${s}</option>`).join('')}</select>`
-      :`<span class="text-[11px] px-2 py-1 rounded-full font-medium ${STATUS_BG[st]}">${STATUS_TH[st]} / ${st}</span>`;
+    const statusCell=`<span class="text-[11px] px-2 py-1 rounded-full font-medium inline-block ${STATUS_BG[st]}">${STATUS_TH[st]} / ${st}</span>`
+      +(['Pending Review','Pending Approval','Rejected'].includes(wf)
+        ?`<div class="mt-1"><span class="text-[10px] px-2 py-0.5 rounded-full font-medium ${WF_BG[wf]}">${WF_TH[wf]}</span></div>`:'')
+      +(isAdmin()?`<div class="mt-1"><select onchange="setField(${it.no},'status',this.value)" class="text-[10px] border border-slate-200 rounded px-1 py-0.5 bg-white">
+          ${STATUSES.map(s2=>`<option value="${s2}" ${s2===st?'selected':''}>${s2}</option>`).join('')}</select></div>`:'');
     const ownerField=editable
       ?`<input value="${esc(owner)}" onchange="setField(${it.no},'owner',this.value)" placeholder="ระบุชื่อ / หน่วยงาน — Name / Unit" class="w-full mt-1 text-sm border border-slate-300 rounded-lg px-2 py-1.5">`
       :`<div class="w-full mt-1 text-sm text-slate-600">${esc(owner)||'<span class="text-slate-300">—</span>'}</div>`;
     const noteField=editable
       ?`<input value="${esc(note)}" onchange="setField(${it.no},'note',this.value)" placeholder="บันทึกหลักฐาน / Gap / Action" class="w-full mt-1 text-sm border border-slate-300 rounded-lg px-2 py-1.5">`
       :`<div class="w-full mt-1 text-sm text-slate-600">${esc(note)||'<span class="text-slate-300">—</span>'}</div>`;
+    const clickupField=`<div class="flex gap-1.5 items-center mt-1">
+        ${editable?`<input id="cu-${it.no}" value="${esc(clickupUrl)}" onchange="setField(${it.no},'clickupUrl',this.value)" placeholder="https://app.clickup.com/t/..." class="w-full text-sm border border-slate-300 rounded-lg px-2 py-1.5">`
+          :`<div class="w-full text-sm text-slate-600">${esc(clickupUrl)||'<span class="text-slate-300">—</span>'}</div>`}
+        ${clickupUrl?`<a href="${esc(clickupUrl)}" target="_blank" rel="noopener" title="เปิดใน ClickUp / Open in ClickUp" class="shrink-0 text-xs px-2 py-1.5 rounded-lg bg-violet-100 hover:bg-violet-200 text-violet-700">\u{1F517}</a>`:''}
+      </div>`;
     return `<tbody class="border-b border-slate-100">
       <tr class="hover:bg-blue-50/40">
         <td class="px-2 py-2 text-center"><button onclick="toggleRow(${it.no})" class="text-blue-600 font-bold w-5">${open?'−':'+'}</button></td>
@@ -341,16 +394,22 @@ function tracker(){
             </div>
           </div>
         </div>
-        <div class="grid md:grid-cols-2 gap-3 mt-4 pt-3 border-t border-slate-200">
+        <div class="grid md:grid-cols-3 gap-3 mt-4 pt-3 border-t border-slate-200">
           <div><label class="text-xs font-bold text-slate-500">ผู้รับผิดชอบ <span class="en">/ Owner</span></label>${ownerField}</div>
           <div><label class="text-xs font-bold text-slate-500">หมายเหตุ / หลักฐานอ้างอิง <span class="en">/ Note · Evidence</span></label>${noteField}</div>
+          <div><label class="text-xs font-bold text-slate-500">งาน ClickUp <span class="en">/ Task (ClickUp)</span></label>${clickupField}</div>
+        </div>
+        ${workflowPanel(it,wf)}
+        <div class="mt-3 pt-3 border-t border-slate-200">
+          <button onclick="toggleHistory(${it.no})" class="text-xs text-blue-600 hover:underline">${EXPANDED_HISTORY[it.no]?'ซ่อนประวัติ / Hide history':'\u{1F553} ดูประวัติ / View history'}</button>
+          ${EXPANDED_HISTORY[it.no]?historyPanel(it.no):''}
         </div>
         <div class="text-[10px] text-slate-300 mt-2">หมายเหตุ: เนื้อหาข้อกำหนด ITGR คงไว้เป็นภาษาอังกฤษตามต้นฉบับทางการ / ITGR requirement text is kept in the official English source.</div>
       </td></tr>`:''}
     </tbody>`;
   }).join('');
   return `<section class="mt-6">
-    ${editable?'':'<div class="bg-amber-50 border border-amber-200 text-amber-700 text-xs rounded-xl p-3 mb-4">คุณมีสิทธิ์อ่านอย่างเดียว ไม่สามารถแก้ไขสถานะได้ / You have read-only access — status, owner and note cannot be edited.</div>'}
+    ${editable?'':trackerRoleBanner()}
     <div class="bg-white rounded-xl border border-slate-200 p-4 mb-4 noprint">
       <div class="flex flex-wrap gap-2 items-center">
         <input id="fq" value="${esc(FILTERS.q)}" placeholder="\u{1F50D} ค้นหา ชื่อข้อ / เนื้อหา / Article — Search" class="text-xs border border-slate-300 rounded-lg px-3 py-1.5 flex-1 min-w-[220px]">
@@ -380,6 +439,132 @@ function tracker(){
       </table>
     </div>
   </section>`;
+}
+
+// ---------- WORKFLOW (v1.3) ----------
+function trackerRoleBanner(){
+  const msg={
+    reviewer:'คุณเป็น Reviewer — ตรวจทานรายการที่ "รอตรวจทาน" ได้ (คลิกเปิดรายการ) แก้ไข Owner/Evidence/Task ไม่ได้ / You are a Reviewer — you can review items in "Pending Review" (expand a row), but cannot edit Owner/Evidence/Task.',
+    approver:'คุณเป็น Approver — ตัดสินรายการที่ "รออนุมัติ" ได้ (คลิกเปิดรายการ) แก้ไข Owner/Evidence/Task ไม่ได้ / You are an Approver — you can decide items in "Pending Approval" (expand a row), but cannot edit Owner/Evidence/Task.',
+    read_only:'คุณมีสิทธิ์อ่านอย่างเดียว ไม่สามารถแก้ไขหรือดำเนินการใดๆ ได้ / You have read-only access — nothing here can be edited or actioned.'
+  }[ME&&ME.role] || '';
+  return msg?`<div class="bg-amber-50 border border-amber-200 text-amber-700 text-xs rounded-xl p-3 mb-4">${msg}</div>`:'';
+}
+function workflowPanel(it,wf){
+  const no=it.no;
+  if(canSubmit() && ['Not Started','In Progress','Rejected'].includes(wf)){
+    return `<div class="mt-3 pt-3 border-t border-slate-200 bg-blue-50/60 -mx-6 px-6 py-3">
+      <button onclick="submitItem(${no})" class="text-sm px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium">\u{1F4E4} ส่งขออนุมัติ / Submit for Approval</button>
+      <div class="text-[11px] text-slate-400 mt-1">ต้องกรอกผู้รับผิดชอบและหมายเหตุ/หลักฐานก่อนส่ง / Owner and Evidence note are required before submitting</div>
+    </div>`;
+  }
+  if(canReview() && wf==='Pending Review'){
+    return `<div class="mt-3 pt-3 border-t border-slate-200 bg-violet-50/60 -mx-6 px-6 py-3">
+      <div class="text-xs font-bold text-violet-700 mb-2">\u{1F441}️ การตรวจทาน / Reviewer action</div>
+      <textarea id="rc-${no}" rows="2" placeholder="ความเห็น (จำเป็นถ้าตีกลับ) / Comment (required if rejecting)" class="w-full text-sm border border-slate-300 rounded-lg px-2 py-1.5 mb-2"></textarea>
+      <div class="flex flex-wrap gap-2">
+        <button onclick="reviewItem(${no},'ok')" class="text-sm px-3 py-1.5 rounded-lg bg-green-600 hover:bg-green-700 text-white font-medium">✓ OK → ส่งต่อผู้อนุมัติ / to Approver</button>
+        <button onclick="reviewItem(${no},'reject')" class="text-sm px-3 py-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-red-700 font-medium">✕ ตีกลับ / Reject</button>
+      </div>
+    </div>`;
+  }
+  if(canApprove() && wf==='Pending Approval'){
+    return `<div class="mt-3 pt-3 border-t border-slate-200 bg-indigo-50/60 -mx-6 px-6 py-3">
+      <div class="text-xs font-bold text-indigo-700 mb-2">\u{2696}️ การอนุมัติ / Approver decision</div>
+      <textarea id="ac-${no}" rows="2" placeholder="ความเห็น / เงื่อนไขข้อยกเว้น — Comment / exception note" class="w-full text-sm border border-slate-300 rounded-lg px-2 py-1.5 mb-2"></textarea>
+      <input id="af-${no}" type="file" multiple class="text-xs mb-2 block">
+      <div class="flex flex-wrap gap-2">
+        <button onclick="approveItem(${no},'compliant')" class="text-sm px-3 py-1.5 rounded-lg bg-green-600 hover:bg-green-700 text-white font-medium">✓ Compliant</button>
+        <button onclick="approveItem(${no},'complied_with_condition')" class="text-sm px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-medium">△ Complied with Condition</button>
+        <button onclick="approveItem(${no},'not_compliant')" class="text-sm px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium">✕ Not Compliant</button>
+        <button onclick="approveItem(${no},'reject')" class="text-sm px-3 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium">↩ ตีกลับให้ User / Reject</button>
+      </div>
+      <div class="text-[11px] text-slate-400 mt-1">"Complied with Condition" ต้องมีไฟล์แนบหรือ comment อย่างน้อย 1 อย่าง / requires at least an attached file or a comment</div>
+    </div>`;
+  }
+  if(['Pending Review','Pending Approval'].includes(wf)){
+    return `<div class="mt-3 pt-3 border-t border-slate-200 text-xs text-slate-400">${wf==='Pending Review'?'รอ Reviewer ตรวจทาน / Awaiting Reviewer':'รอ Approver อนุมัติ / Awaiting Approver'}</div>`;
+  }
+  if(wf==='Rejected'){
+    return `<div class="mt-3 pt-3 border-t border-slate-200 text-xs text-red-500">รายการนี้ถูกตีกลับ — ดูสาเหตุในประวัติด้านล่าง / This item was rejected — see the reason in History below</div>`;
+  }
+  return '';
+}
+let HISTORY={}, EXPANDED_HISTORY={};
+async function toggleHistory(no){
+  if(EXPANDED_HISTORY[no]){ EXPANDED_HISTORY[no]=false; render(); return; }
+  if(!HISTORY[no]){
+    try{ HISTORY[no]=await fetchJSON('/api/items/'+no+'/history'); }
+    catch(err){ alert('โหลดประวัติไม่สำเร็จ / Failed to load history: '+err.message); return; }
+  }
+  EXPANDED_HISTORY[no]=true; render();
+}
+function historyPanel(no){
+  const h=HISTORY[no]; if(!h) return '';
+  const events=(h.events||[]).map(e=>`<div class="text-xs border-l-2 border-slate-200 pl-2 py-1">
+      <div class="text-slate-400">${new Date(e.created_at).toLocaleString()} · <b class="text-slate-600">${esc(e.actor_name)}</b></div>
+      <div class="text-slate-600">${esc(e.from_state||'—')} → <b>${esc(e.to_state)}</b>${e.comment?': '+esc(e.comment):''}</div>
+    </div>`).join('') || '<div class="text-xs text-slate-300 italic">— ยังไม่มีความเคลื่อนไหว / no events yet —</div>';
+  const files=(h.evidence||[]).map(f=>`<button onclick="openEvidence(${f.id})" class="text-xs text-blue-600 hover:underline block text-left">\u{1F4CE} ${esc(f.file_name)} <span class="text-slate-400">(${esc(f.uploaded_by_name)})</span></button>`).join('');
+  return `<div class="mt-2 bg-white border border-slate-200 rounded-lg p-3">
+    <div class="text-xs font-bold text-slate-500 mb-2">ลำดับเหตุการณ์ / Timeline</div>
+    <div class="space-y-1 mb-3">${events}</div>
+    ${files?`<div class="text-xs font-bold text-slate-500 mb-1">หลักฐานแนบ / Evidence files</div><div class="space-y-1">${files}</div>`:''}
+  </div>`;
+}
+async function submitItem(no){
+  try{ await fetchJSON('/api/items/'+no+'/submit', {method:'POST'}); await refreshItems(); }
+  catch(err){ alert('ส่งไม่สำเร็จ / Submit failed: '+err.message); }
+}
+async function reviewItem(no,decision){
+  const comment=(document.getElementById('rc-'+no)||{}).value||'';
+  if(decision==='reject' && !comment.trim()){ alert('กรุณาระบุความเห็นก่อนตีกลับ / A comment is required to reject'); return; }
+  try{ await fetchJSON('/api/items/'+no+'/review', {method:'POST', body:{decision,comment}}); await refreshItems(); }
+  catch(err){ alert('บันทึกไม่สำเร็จ / Failed: '+err.message); }
+}
+function fileToBase64(file){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=()=>resolve(String(reader.result).split(',')[1]||'');
+    reader.onerror=()=>reject(new Error('อ่านไฟล์ไม่สำเร็จ / Could not read file'));
+    reader.readAsDataURL(file);
+  });
+}
+async function uploadEvidenceFile(no,file){
+  const data_base64=await fileToBase64(file);
+  return fetchJSON('/api/items/'+no+'/evidence', {method:'POST', body:{file_name:file.name, content_type:file.type, data_base64}});
+}
+async function approveItem(no,decision){
+  const comment=(document.getElementById('ac-'+no)||{}).value||'';
+  if(decision==='reject' && !comment.trim()){ alert('กรุณาระบุความเห็นก่อนตีกลับ / A comment is required to reject'); return; }
+  const fileInput=document.getElementById('af-'+no);
+  const files=fileInput && fileInput.files ? Array.from(fileInput.files) : [];
+  if(decision==='complied_with_condition' && !comment.trim() && files.length===0){
+    alert('Complied with Condition ต้องมีไฟล์แนบหรือ comment อย่างน้อย 1 อย่าง / requires at least an attached file or a comment');
+    return;
+  }
+  try{
+    const fileIds=[];
+    for(const f of files){ const uploaded=await uploadEvidenceFile(no,f); fileIds.push(uploaded.file.id); }
+    await fetchJSON('/api/items/'+no+'/approve', {method:'POST', body:{decision,comment,evidence_file_ids:fileIds}});
+    await refreshItems();
+  }catch(err){ alert('บันทึกไม่สำเร็จ / Failed: '+err.message); }
+}
+async function openEvidence(id){
+  try{ const r=await fetchJSON('/api/evidence/'+id); window.open(r.url,'_blank'); }
+  catch(err){ alert('เปิดไฟล์ไม่สำเร็จ / Failed to open file: '+err.message); }
+}
+async function refreshItems(){
+  // Full refetch (not just the one item) keeps STATE, the Overview/radar/
+  // grade numbers, and the "waiting on you" nav badge all consistent after
+  // a workflow transition.
+  try{
+    const res=await fetchJSON('/api/items');
+    ITEMS=res.items;
+    STATE={};
+    ITEMS.forEach(it=>{ STATE[it.no]={status:it.status, owner:it.owner, note:it.note, clickupUrl:it.clickupUrl, workflowState:it.workflowState}; });
+    HISTORY={};
+  }finally{ render(); }
 }
 
 // ---------- CATEGORY ----------
@@ -544,7 +729,7 @@ async function loadAdminData(){
 }
 function adminView(){
   if(ADMIN_LOADING) return `<div class="mt-6 text-sm text-slate-400">กำลังโหลด... / Loading...</div>`;
-  const roleOpt=(sel)=>['admin','read_write','read_only'].map(r=>`<option value="${r}" ${sel===r?'selected':''}>${r}</option>`).join('');
+  const roleOpt=(sel)=>['admin','user','reviewer','approver','read_only'].map(r=>`<option value="${r}" ${sel===r?'selected':''}>${r}</option>`).join('');
   const userRows=ADMIN_USERS.map(u=>`
     <tr class="border-t border-slate-100 text-sm">
       <td class="px-3 py-2 font-medium text-slate-700">${esc(u.display_name)}</td>
@@ -612,11 +797,17 @@ async function adminDeleteUser(id,name){
 
 // ---------- interactions ----------
 function toggleRow(n){ EXPANDED[n]=!EXPANDED[n]; render(); }
+// STATE keys are camelCase; the PATCH API expects the raw DB column name
+// for the one field where those differ (clickupUrl -> clickup_url).
+const FIELD_API_KEY = { clickupUrl: 'clickup_url' };
 async function setField(n,k,v){
-  const prev = STATE[n] ? {...STATE[n]} : {status:"Not Started",owner:"",note:""};
-  STATE[n]=STATE[n]||{}; STATE[n][k]=v; render();
+  const prev = STATE[n] ? {...STATE[n]} : {status:"Not Started",owner:"",note:"",clickupUrl:"",workflowState:"Not Started"};
+  STATE[n]=STATE[n]||{}; STATE[n][k]=v;
+  // Mirrors the BFF's auto-bump so the badge doesn't lag until the next refetch.
+  if(k!=='status' && STATE[n].status==='Not Started') STATE[n].status='In Progress';
+  render();
   try{
-    await fetchJSON('/api/items/'+n, { method:'PATCH', body:{ [k]: v } });
+    await fetchJSON('/api/items/'+n, { method:'PATCH', body:{ [FIELD_API_KEY[k]||k]: v } });
   }catch(err){
     STATE[n]=prev; render();
     alert('บันทึกไม่สำเร็จ / Failed to save: '+err.message);
@@ -665,7 +856,7 @@ async function init(){
   DRIVE = driveRes.folders;
   APPX = appxRes.appendices;
   STATE = {};
-  ITEMS.forEach(it=>{ STATE[it.no] = { status: it.status, owner: it.owner, note: it.note }; });
+  ITEMS.forEach(it=>{ STATE[it.no] = { status: it.status, owner: it.owner, note: it.note, clickupUrl: it.clickupUrl, workflowState: it.workflowState }; });
   rebuildCats();
   render();
 }

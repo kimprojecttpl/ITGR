@@ -2,7 +2,7 @@ import { getSupabase } from "../../../lib/supabase.js";
 import { requireRole } from "../../../lib/auth.js";
 import { hashPin } from "../../../lib/pin.js";
 
-const VALID_ROLES = ["admin", "read_write", "read_only"];
+const VALID_ROLES = ["admin", "user", "reviewer", "approver", "read_only"];
 
 export default async function handler(req, res) {
   const session = requireRole(req, res, "admin");

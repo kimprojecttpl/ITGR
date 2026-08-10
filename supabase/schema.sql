@@ -125,3 +125,83 @@ alter table appendices       enable row level security;
 alter table audit_log        enable row level security;
 -- No policies are created: default-deny for anon/authenticated roles.
 -- Only the service role (used exclusively server-side in /api/*) can read/write.
+
+-- =============================================================================
+-- v1.3: ClickUp task link + User -> Reviewer -> Approver approval workflow.
+-- Appended (not editing the original CREATE TABLE statements above) per
+-- CLAUDE.md's migration convention — safe to re-run.
+-- =============================================================================
+
+-- ---------------------------------------------------------------------------
+-- Roles: `read_write` is retired in favor of three workflow-stage roles.
+-- Existing `read_write` accounts are remapped to `user` (the stakeholder's
+-- explicit decision for this project's one existing `read_write` account,
+-- "lead" — see PRD.md v1.3 for the reasoning); reassign reviewer/approver
+-- accounts manually afterward via the Admin tab or scripts/create-user.mjs.
+-- ---------------------------------------------------------------------------
+alter table users drop constraint if exists users_role_check;
+update users set role = 'user' where role = 'read_write';
+alter table users add constraint users_role_check
+  check (role in ('admin', 'user', 'reviewer', 'approver', 'read_only'));
+
+-- ---------------------------------------------------------------------------
+-- item_status: add ClickUp link + granular workflow state.
+-- `status` keeps driving the existing Overview/radar/grade calculations
+-- unchanged; `Not Applicable` is renamed to `Not Compliant` rather than
+-- adding a sixth value (stakeholder decision, PRD.md v1.3 — the checklist
+-- loses the ability to mark an item "doesn't apply to us" going forward).
+-- ---------------------------------------------------------------------------
+alter table item_status drop constraint if exists item_status_status_check;
+update item_status set status = 'Not Compliant' where status = 'Not Applicable';
+alter table item_status add constraint item_status_status_check
+  check (status in ('Not Started', 'In Progress', 'Compliant', 'Partial', 'Not Compliant'));
+
+alter table item_status add column if not exists clickup_url text not null default '';
+alter table item_status add column if not exists workflow_state text not null default 'Not Started';
+alter table item_status drop constraint if exists item_status_workflow_state_check;
+alter table item_status add constraint item_status_workflow_state_check
+  check (workflow_state in (
+    'Not Started', 'In Progress', 'Pending Review', 'Pending Approval',
+    'Rejected', 'Compliant', 'Complied with Condition', 'Not Compliant'
+  ));
+
+-- ---------------------------------------------------------------------------
+-- item_evidence_files: files an Approver (or User, for future flexibility)
+-- attaches to an item. Stored in Supabase Storage, private bucket — never a
+-- public URL; the BFF hands out short-lived signed URLs on request.
+-- ---------------------------------------------------------------------------
+create table if not exists item_evidence_files (
+  id           bigint generated always as identity primary key,
+  item_no      int not null references checklist_items (no) on delete cascade,
+  uploaded_by  uuid references users (id) on delete set null,
+  storage_path text not null,     -- path within the 'evidence' Storage bucket
+  file_name    text not null,
+  content_type text,
+  uploaded_at  timestamptz not null default now()
+);
+
+create index if not exists item_evidence_files_item_no_idx on item_evidence_files (item_no);
+
+-- ---------------------------------------------------------------------------
+-- item_workflow_events: append-only workflow audit trail + the comment
+-- history a User sees when their submission is rejected. Kept separate from
+-- `audit_log` (which stays focused on simple owner/note/clickup_url edits)
+-- because the two event shapes (field diff vs. state transition + comment)
+-- don't share a natural schema.
+-- ---------------------------------------------------------------------------
+create table if not exists item_workflow_events (
+  id                bigint generated always as identity primary key,
+  item_no           int not null references checklist_items (no) on delete cascade,
+  actor_id          uuid references users (id) on delete set null,
+  from_state        text,
+  to_state          text not null,
+  comment           text,
+  evidence_file_id  bigint references item_evidence_files (id) on delete set null,
+  created_at        timestamptz not null default now()
+);
+
+create index if not exists item_workflow_events_item_no_idx on item_workflow_events (item_no);
+
+alter table item_evidence_files  enable row level security;
+alter table item_workflow_events enable row level security;
+-- Same default-deny posture as every other table — service role (BFF) only.
