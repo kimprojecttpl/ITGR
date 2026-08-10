@@ -1,8 +1,8 @@
 # PRD — IT Governance Dashboard (ITGR) — AutoCorp
 
 **Owner:** COE&S — AutoCorp (ATC)
-**Version:** 1.1
-**Status:** v1.0 shipped and verified on Vercel (tagged `v1.0.0` / Baseline 1.0) — this revision specs the v1.1 addition
+**Version:** 1.2
+**Status:** v1.0 and v1.1 shipped and verified on Vercel — this revision specs the v1.2 addition
 **Source:** Derived from current codebase (`index.html`) + explicit stakeholder direction
 
 ## Version History
@@ -10,7 +10,8 @@
 | Version | Date | Summary |
 |---|---|---|
 | 1.0 | 2026-08-06 | Initial target-state spec: migrate checklist/reference/tracker data from `localStorage` to Supabase, add a Vercel serverless BFF mediating all data access, add PIN login with 3-tier RBAC (`admin` / `read_write` / `read_only`) and a basic audit log. Shipped and tagged **Baseline 1.0** (`v1.0.0`). |
-| 1.1 | 2026-08-10 | Add a category-level **Compliance Radar Chart** to the Overview tab — one axis per ITGR category (8 total), plotting each category's existing progress % with an A–E letter grade overlay. No new data model or API changes; computed client-side from data already served by `/api/items`. |
+| 1.1 | 2026-08-10 | Add a category-level **Compliance Radar Chart** to the Overview tab — one axis per ITGR category (8 total), plotting each category's existing progress % with an A–E letter grade overlay. No new data model or API changes; computed client-side from data already served by `/api/items`. Shipped. |
+| 1.2 | 2026-08-10 | Add an **Overall Grade** (single A–E grade combining all 8 categories) and a **Priority / Top Priority status breakdown**, so a reviewer can see compliance posture for the highest-risk items (◎ Top Priority, 〇 Priority) without cross-referencing the Tracker tab. Same grading scale and data source as v1.1 — no new data model or API changes. |
 
 ---
 
@@ -84,6 +85,14 @@ so that the login doesn't leak which PINs are valid.
 I want to see all 8 ITGR categories plotted on a single radar/spider chart with a letter grade per category,
 so that I can spot weak categories at a glance without reading 8 separate progress bars or opening the Tracker.
 
+**As a COE&S lead reporting status upward (v1.2),**
+I want a single overall A–E grade combining all 8 categories,
+so that I can give a one-word/one-letter answer to "how are we doing overall" without averaging 8 numbers myself.
+
+**As a COE&S lead prioritizing remediation work (v1.2),**
+I want to see the compliance status specifically for Top Priority (◎) and Priority (〇) items, separate from standard items,
+so that I can tell whether the highest-risk requirements are on track even if the overall grade looks fine.
+
 ## 6. Functional Requirements
 
 ### P0 — Must-Have
@@ -123,6 +132,14 @@ so that I can spot weak categories at a glance without reading 8 separate progre
     - **E**: < 20%
   - Grade thresholds are boundary-inclusive on the lower bound (e.g., exactly 80% is an A, exactly 60% is a B) — no gap or overlap between bands.
   - Grade is shown per-axis on the chart (label or color) and available on hover/tap for the numeric %.
+  - Computed entirely client-side from data already returned by `GET /api/items` — no schema or BFF changes required.
+- **Overall Grade & Priority Status (v1.2)**
+  - Overview tab shows one **overall grade** (A–E) computed from the same overall progress % already shown in the "Overall Progress" KPI (i.e. across all 96 items, all 8 categories combined) — same A/B/C/D/E thresholds as the per-category radar (§ Category Compliance Radar above).
+  - Overview tab shows two priority-tier panels, computed the same way as the per-category breakdown but filtered by `priority`:
+    - **Top Priority (◎)**: progress %, grade, and a status-count breakdown (Not Started / In Progress / Compliant / Partial / Not Applicable).
+    - **Priority (〇)**: same breakdown.
+  - Items with no priority marker (`priority === ""`, the majority of the checklist) are intentionally excluded from these two panels — they're already covered by the overall grade and the per-category radar.
+  - If a tier has zero items (not expected given current data, but must not crash), render an empty state instead of a divide-by-zero or blank panel.
   - Computed entirely client-side from data already returned by `GET /api/items` — no schema or BFF changes required.
 
 ### P1 — Nice-to-Have

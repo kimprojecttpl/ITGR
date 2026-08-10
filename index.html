@@ -217,8 +217,51 @@ function overview(){
         ${catBars}
       </div>
     </div>
+    ${priorityGradeSection(pct)}
     ${radarSection()}
   </section>`;
+}
+function priorityGradeSection(overallPct){
+  const overallGrade=gradeFor(overallPct);
+  const tiers=[
+    {mark:'◎',label:'สูงสุด',labelEn:'Top Priority ◎',filter:i=>i.priority==='◎'},
+    {mark:'〇',label:'สำคัญ',labelEn:'Priority 〇',filter:i=>i.priority==='〇'}
+  ];
+  const tierCards=tiers.map(t=>{
+    const arr=ITEMS.filter(t.filter);
+    if(!arr.length) return `<div class="flex-1 min-w-[220px] border border-slate-100 rounded-lg p-3">
+      <div class="text-sm font-bold text-slate-700 mb-2">${t.label} <span class="en">/ ${t.labelEn}</span></div>
+      <div class="text-xs text-slate-300 italic">— ไม่มีข้อกำหนดในกลุ่มนี้ / no items in this tier —</div>
+    </div>`;
+    const p=progressPct(t.filter);
+    const g=gradeFor(p);
+    const sc=statusCounts(t.filter);
+    const statusRow=STATUSES.filter(s=>sc[s]).map(s=>`<span class="text-[10px] px-2 py-0.5 rounded-full ${STATUS_BG[s]}">${STATUS_TH[s]}/${s} ${sc[s]}</span>`).join('');
+    return `<div class="flex-1 min-w-[220px] border border-slate-100 rounded-lg p-3">
+      <div class="flex items-center justify-between gap-2 mb-2 flex-wrap">
+        <div class="text-sm font-bold text-slate-700">${t.label} <span class="en">/ ${t.labelEn}</span></div>
+        <div class="flex items-center gap-1.5">
+          <b class="text-sm px-2 py-0.5 rounded ${GRADE_BG[g]}">${g}</b>
+          <span class="text-slate-400 text-xs">${p}% · ${arr.length} ข้อ / items</span>
+        </div>
+      </div>
+      <div class="flex flex-wrap gap-1.5">${statusRow}</div>
+    </div>`;
+  }).join('');
+  return `<div class="bg-white rounded-xl border border-slate-200 p-5 mt-4">
+    <h3 class="font-bold text-slate-700 mb-1 text-sm">${H("เกรดรวมทุกหมวด และสถานะตามลำดับความสำคัญ","Overall Grade & Priority Status")}</h3>
+    <p class="text-[11px] text-slate-400 mb-3">เกรดรวมคำนวณจาก % ความคืบหน้าโดยรวมทั้ง 96 ข้อ (เกณฑ์เดียวกับกราฟเรดาร์ด้านล่าง) <span class="en block">/ Overall grade uses the same progress % and thresholds as the radar chart below, across all 96 items</span></p>
+    <div class="flex flex-wrap gap-4 items-stretch">
+      <div class="flex items-center gap-4 border border-slate-100 rounded-lg p-3 shrink-0">
+        <div class="w-16 h-16 rounded-full flex items-center justify-center text-3xl font-bold text-white shrink-0" style="background:${GRADE_COLOR[overallGrade]}">${overallGrade}</div>
+        <div>
+          <div class="text-xs text-slate-400 leading-tight">เกรดรวม (8 หมวด) <span class="en block">/ Overall grade (all 8 categories)</span></div>
+          <div class="text-2xl font-bold text-slate-700">${overallPct}%</div>
+        </div>
+      </div>
+      ${tierCards}
+    </div>
+  </div>`;
 }
 function radarSection(){
   const radarData=CATS.map(c=>{
