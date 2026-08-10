@@ -29,6 +29,9 @@ const STATUSES = ["Not Started","In Progress","Compliant","Partial","Not Applica
 const STATUS_TH = {"Not Started":"ยังไม่เริ่ม","In Progress":"กำลังดำเนินการ","Compliant":"สอดคล้อง","Partial":"สอดคล้องบางส่วน","Not Applicable":"ไม่เกี่ยวข้อง"};
 const STATUS_COLOR = {"Not Started":"#94a3b8","In Progress":"#2563eb","Compliant":"#16a34a","Partial":"#d97706","Not Applicable":"#64748b"};
 const STATUS_BG = {"Not Started":"bg-slate-100 text-slate-600","In Progress":"bg-blue-100 text-blue-700","Compliant":"bg-green-100 text-green-700","Partial":"bg-amber-100 text-amber-700","Not Applicable":"bg-slate-200 text-slate-600"};
+const GRADE_COLOR = {A:"#16a34a",B:"#0ea5e9",C:"#d97706",D:"#ea580c",E:"#dc2626"};
+const GRADE_BG = {A:"bg-green-100 text-green-700",B:"bg-sky-100 text-sky-700",C:"bg-amber-100 text-amber-700",D:"bg-orange-100 text-orange-700",E:"bg-red-100 text-red-700"};
+function gradeFor(pct){ return pct>=80?'A':pct>=60?'B':pct>=40?'C':pct>=20?'D':'E'; }
 
 // All checklist/reference data + tracker state now lives in Supabase and is
 // loaded through the BFF (/api/*) at startup — see init() at the bottom.
@@ -58,6 +61,29 @@ function donut(segments,size,thick){
     off+=len;
   });
   return '<svg width="'+size+'" height="'+size+'" viewBox="0 0 '+size+' '+size+'">'+parts+'</svg>';
+}
+function radarChart(items,size){
+  size=size||280;
+  const n=items.length;
+  const cx=size/2, cy=size/2, R=size/2-16;
+  const angleFor=i=> -Math.PI/2 + i*(2*Math.PI/n);
+  const ptAt=(i,frac)=>{ const a=angleFor(i); return [cx+Math.cos(a)*R*frac, cy+Math.sin(a)*R*frac]; };
+  const rings=[0.2,0.4,0.6,0.8,1].map(lv=>{
+    const pts=items.map((_,i)=>ptAt(i,lv).join(',')).join(' ');
+    return '<polygon points="'+pts+'" fill="none" stroke="#e2e8f0" stroke-width="1"></polygon>';
+  }).join('');
+  const axes=items.map((_,i)=>{
+    const [x,y]=ptAt(i,1);
+    return '<line x1="'+cx+'" y1="'+cy+'" x2="'+x+'" y2="'+y+'" stroke="#e2e8f0" stroke-width="1"></line>';
+  }).join('');
+  const dataPts=items.map((d,i)=>ptAt(i, Math.max(0,Math.min(1,d.pct/100))));
+  const dataPoly='<polygon points="'+dataPts.map(p=>p.join(',')).join(' ')+'" fill="#2563eb26" stroke="#2563eb" stroke-width="2"></polygon>';
+  const dots=items.map((d,i)=>{ const [x,y]=dataPts[i]; return '<circle cx="'+x+'" cy="'+y+'" r="4" fill="'+GRADE_COLOR[d.grade]+'" stroke="#fff" stroke-width="1.5"></circle>'; }).join('');
+  const tickLabels=items.map((d,i)=>{
+    const [x,y]=ptAt(i,1.12);
+    return '<text x="'+x+'" y="'+y+'" text-anchor="middle" dominant-baseline="middle" font-size="11" font-weight="700" fill="#64748b">'+d.no+'</text>';
+  }).join('');
+  return '<svg width="'+size+'" height="'+size+'" viewBox="0 0 '+size+' '+size+'">'+rings+axes+dataPoly+dots+tickLabels+'</svg>';
 }
 function statusCounts(filterFn){
   const c={"Not Started":0,"In Progress":0,"Compliant":0,"Partial":0,"Not Applicable":0};
@@ -191,7 +217,30 @@ function overview(){
         ${catBars}
       </div>
     </div>
+    ${radarSection()}
   </section>`;
+}
+function radarSection(){
+  const radarData=CATS.map(c=>{
+    const pct=progressPct(i=>i.catNo===c.no);
+    return {no:c.no, shortTh:c.shortTh, short:c.short, pct, grade:gradeFor(pct)};
+  });
+  const legend=radarData.map(d=>`<div class="flex items-center gap-2">
+      <span class="w-3 h-3 rounded shrink-0" style="background:${GRADE_COLOR[d.grade]}"></span>
+      <span class="text-slate-600">${d.no}. ${esc(d.shortTh)} <span class="en">/ ${esc(d.short)}</span></span>
+      <span class="ml-auto flex items-center gap-1.5 shrink-0">
+        <b class="text-xs px-1.5 py-0.5 rounded ${GRADE_BG[d.grade]}">${d.grade}</b>
+        <span class="text-slate-400 text-xs w-9 text-right">${d.pct}%</span>
+      </span>
+    </div>`).join('');
+  return `<div class="bg-white rounded-xl border border-slate-200 p-5 mt-4">
+    <h3 class="font-bold text-slate-700 mb-1 text-sm">${H("เกรดความสอดคล้องรายหมวด (เรดาร์)","Category Compliance Grade (Radar)")}</h3>
+    <p class="text-[11px] text-slate-400 mb-3">เกรดคำนวณจาก % ความคืบหน้าเดียวกับกราฟด้านบน — A ≥80% · B ≥60% · C ≥40% · D ≥20% · E &lt;20% <span class="en block">/ Grade uses the same progress % as the bars above — A ≥80% · B ≥60% · C ≥40% · D ≥20% · E &lt;20%</span></p>
+    <div class="flex flex-wrap items-center gap-6">
+      <div class="shrink-0 mx-auto">${radarChart(radarData,280)}</div>
+      <div class="flex-1 min-w-[240px] text-xs space-y-2">${legend}</div>
+    </div>
+  </div>`;
 }
 
 // ---------- TRACKER ----------

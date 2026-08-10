@@ -1,8 +1,16 @@
 # PRD — IT Governance Dashboard (ITGR) — AutoCorp
 
 **Owner:** COE&S — AutoCorp (ATC)
-**Status:** Draft — target-state spec for Supabase + BFF + PIN auth migration
+**Version:** 1.1
+**Status:** v1.0 shipped and verified on Vercel (tagged `v1.0.0` / Baseline 1.0) — this revision specs the v1.1 addition
 **Source:** Derived from current codebase (`index.html`) + explicit stakeholder direction
+
+## Version History
+
+| Version | Date | Summary |
+|---|---|---|
+| 1.0 | 2026-08-06 | Initial target-state spec: migrate checklist/reference/tracker data from `localStorage` to Supabase, add a Vercel serverless BFF mediating all data access, add PIN login with 3-tier RBAC (`admin` / `read_write` / `read_only`) and a basic audit log. Shipped and tagged **Baseline 1.0** (`v1.0.0`). |
+| 1.1 | 2026-08-10 | Add a category-level **Compliance Radar Chart** to the Overview tab — one axis per ITGR category (8 total), plotting each category's existing progress % with an A–E letter grade overlay. No new data model or API changes; computed client-side from data already served by `/api/items`. |
 
 ---
 
@@ -72,6 +80,10 @@ so that the migration doesn't disrupt a workflow the team already relies on.
 I want a clear error message without being told whether the PIN exists,
 so that the login doesn't leak which PINs are valid.
 
+**As a COE&S lead reviewing overall posture (v1.1),**
+I want to see all 8 ITGR categories plotted on a single radar/spider chart with a letter grade per category,
+so that I can spot weak categories at a glance without reading 8 separate progress bars or opening the Tracker.
+
 ## 6. Functional Requirements
 
 ### P0 — Must-Have
@@ -100,6 +112,18 @@ so that the login doesn't leak which PINs are valid.
   - Unauthenticated visits to the dashboard redirect to the login page.
 - **Audit**
   - Every status/owner/note change writes an `audit_log` row: user, item no, field, old value, new value, timestamp.
+- **Category Compliance Radar (v1.1)**
+  - Overview tab shows a radar/spider chart with exactly 8 axes, one per ITGR category, alongside the existing "Progress by Category" bars (additive, not a replacement).
+  - Each axis plots the category's progress % — the same metric already computed by `progressPct()` for the category bars and Category-tab cards (Compliant = full credit, Partial = half credit, Not Applicable = full credit, Not Started/In Progress = no credit), so the radar and the existing bars can never disagree.
+  - Each category additionally shows a letter grade derived from that same percentage:
+    - **A**: ≥ 80%
+    - **B**: ≥ 60% and < 80%
+    - **C**: ≥ 40% and < 60%
+    - **D**: ≥ 20% and < 40%
+    - **E**: < 20%
+  - Grade thresholds are boundary-inclusive on the lower bound (e.g., exactly 80% is an A, exactly 60% is a B) — no gap or overlap between bands.
+  - Grade is shown per-axis on the chart (label or color) and available on hover/tap for the numeric %.
+  - Computed entirely client-side from data already returned by `GET /api/items` — no schema or BFF changes required.
 
 ### P1 — Nice-to-Have
 
@@ -144,6 +168,7 @@ Full DDL lives in `supabase/schema.sql`.
 - **Retention of audit log** (stakeholder/legal): no retention/deletion policy specified; assumed indefinite retention for the FY2025 cycle.
 - **Whether Reference (Drive links) and Appendix content can change over the FY2025 cycle** (stakeholder): if yes, P2 in-UI editing should be reprioritized to P0/P1.
 - **Rate limiting on login** (engineering): P1 lockout-after-failed-attempts was assumed nice-to-have, not required for launch — confirm this is acceptable given PINs are shorter/weaker than passwords.
+- **Should the A–E grade also appear on the Category tab cards and in Print/PDF export** (stakeholder, v1.1): assumed Overview-only for v1.1 since that's the only surface explicitly requested; extending it elsewhere is a small follow-up if wanted.
 
 ## 10. Timeline Considerations
 
