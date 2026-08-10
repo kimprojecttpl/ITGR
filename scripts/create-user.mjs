@@ -8,10 +8,10 @@ import { createClient } from "@supabase/supabase-js";
 import { hashPin } from "../lib/pin.js";
 
 const [, , displayName, pin, role] = process.argv;
-const VALID_ROLES = ["admin", "read_write", "read_only"];
+const VALID_ROLES = ["admin", "user", "reviewer", "approver", "read_only"];
 
 if (!displayName || !pin || !VALID_ROLES.includes(role)) {
-  console.error('Usage: node scripts/create-user.mjs "Display Name" <pin> <admin|read_write|read_only>');
+  console.error('Usage: node scripts/create-user.mjs "Display Name" <pin> <admin|user|reviewer|approver|read_only>');
   process.exit(1);
 }
 

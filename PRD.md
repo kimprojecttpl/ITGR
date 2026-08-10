@@ -1,8 +1,8 @@
 # PRD — IT Governance Dashboard (ITGR) — AutoCorp
 
 **Owner:** COE&S — AutoCorp (ATC)
-**Version:** 1.3
-**Status:** v1.0, v1.1, v1.2 shipped and verified on Vercel — this revision **specs** the v1.3 addition (not yet implemented; see § Timeline Considerations)
+**Version:** 1.4
+**Status:** v1.0–v1.3 shipped and verified on Vercel (schema migration confirmed applied, real Reviewer/Approver/read-only accounts created) — this revision specs + implements the v1.4 addition
 **Source:** Derived from current codebase (`index.html`) + explicit stakeholder direction
 
 ## Version History
@@ -12,7 +12,8 @@
 | 1.0 | 2026-08-06 | Initial target-state spec: migrate checklist/reference/tracker data from `localStorage` to Supabase, add a Vercel serverless BFF mediating all data access, add PIN login with 3-tier RBAC (`admin` / `read_write` / `read_only`) and a basic audit log. Shipped and tagged **Baseline 1.0** (`v1.0.0`). |
 | 1.1 | 2026-08-10 | Add a category-level **Compliance Radar Chart** to the Overview tab — one axis per ITGR category (8 total), plotting each category's existing progress % with an A–E letter grade overlay. No new data model or API changes; computed client-side from data already served by `/api/items`. Shipped. |
 | 1.2 | 2026-08-10 | Add an **Overall Grade** (single A–E grade combining all 8 categories) and a **Priority / Top Priority status breakdown**, so a reviewer can see compliance posture for the highest-risk items (◎ Top Priority, 〇 Priority) without cross-referencing the Tracker tab. Same grading scale and data source as v1.1 — no new data model or API changes. Shipped. |
-| 1.3 | 2026-08-10 | Add a **ClickUp task link** field per item; add a **User → Reviewer → Approver approval workflow** (submit for approval, reviewer OK/reject with comment, approver decision of Compliant / Complied with Condition / Not Compliant with required evidence/exception note); extend the audit trail to cover every workflow action. This is the first v-next revision requiring new roles, new tables, and new BFF endpoints — **spec only in this revision**, pending stakeholder sign-off on the open questions below before implementation. |
+| 1.3 | 2026-08-10 | Add a **ClickUp task link** field per item; add a **User → Reviewer → Approver approval workflow** (submit for approval, reviewer OK/reject with comment, approver decision of Compliant / Complied with Condition / Not Compliant with required evidence/exception note); extend the audit trail to cover every workflow action. Shipped — schema migration applied, roles reassigned (`lead`→`user`, plus new `reviewer`/`approver`/`read_only` accounts). |
+| 1.4 | 2026-08-10 | Close the v1.3 "no reopen flow" gap (previously a stated Non-Goal): once an item reaches a terminal decision (Compliant / Complied with Condition / Not Compliant), Owner and Evidence become locked; a new **"Request for Approval"** action reopens the item (back to `In Progress`) so the User can edit and walk it through Review → Approval again. The **ClickUp Task link stays editable at all times**, regardless of workflow state — it's a reference to external work, not compliance evidence, so it was never meant to be gated by the approval lock. |
 
 ---
 
@@ -48,7 +49,9 @@ COE&S needs this to become a real shared, multi-user, access-controlled system b
 - **(v1.3) Multi-reviewer / multi-approver or parallel sign-off per item** — v1.3 is a single Reviewer then a single Approver per item, not a committee/quorum flow.
 - **(v1.3) Per-category workflow role assignment** — v1.3 treats "Reviewer" and "Approver" as global roles (a Reviewer can review any of the 96 items, not just ones in categories assigned to them). Scoping reviewers/approvers to specific categories is flagged as an open question, not committed as in-scope.
 - **(v1.3) Automated notifications (email/Slack/Teams)** — v1.3 surfaces pending-action counts in-app only; push notifications are a P1/P2 follow-up (see § Recommendations).
-- **(v1.3) Reopening an already-decided item (Compliant / Complied with Condition / Not Compliant)** — v1.3 has no "reopen" flow; once an Approver decides, changing it requires direct admin/DB intervention. A proper reopen-with-history flow is a future consideration.
+- ~~**(v1.3) Reopening an already-decided item**~~ — **superseded by v1.4** (§ Functional Requirements: "Request for Approval" reopen action). No longer a non-goal.
+- **(v1.4) Reopen preserves full prior history, not a fresh start** — reopening does not delete or hide the prior decision's `item_workflow_events`/evidence; it appends new events on top. A "diff view" comparing what changed between decision rounds is out of scope for v1.4.
+- **(v1.4) Locking Owner/Evidence during Pending Review / Pending Approval** — v1.4 only locks the 3 terminal states per the stakeholder's explicit request. Whether mid-review edits should also be blocked is a separate, not-yet-requested question (see § Recommendations).
 
 ## 4. User Roles & Permissions
 
@@ -142,6 +145,14 @@ so that the final compliance decision for that requirement is recorded with the 
 I want every submit / review / approve / reject action logged with who, what, and when,
 so that the full decision trail for a requirement is reconstructable during an actual audit, not just the final status.
 
+**As a User whose item was already approved but needs a correction (v1.4)**,
+I want to click "Request for Approval" to reopen it for editing,
+so that I can fix the Evidence and send it through Review → Approval again, instead of the record being permanently frozen or needing an admin to hand-edit the database.
+
+**As a User at any point in the workflow (v1.4)**,
+I want to update the ClickUp task link even while an item is locked, in review, or already approved,
+so that the link to the remediation work stays current without needing to reopen the whole compliance record just to fix a URL.
+
 ## 6. Functional Requirements
 
 ### P0 — Must-Have
@@ -164,7 +175,8 @@ so that the full decision trail for a requirement is reconstructable during an a
   - `GET /api/me` — current session's user/role.
   - `POST /api/auth/login`, `POST /api/auth/logout`.
   - `admin`-only: `GET/POST /api/admin/users`, `PATCH/DELETE /api/admin/users/:id`, `GET /api/admin/audit-log`.
-  - **(v1.3, proposed)** `POST /api/items/:no/submit` (role: `user`, `admin`) · `POST /api/items/:no/review` `{decision, comment}` (role: `reviewer`, `admin`) · `POST /api/items/:no/approve` `{decision, comment, evidence_file_ids}` (role: `approver`, `admin`) · `POST /api/items/:no/evidence` (file upload → Supabase Storage, returns file id) · `GET /api/items/:no/history` (workflow events + comments for one item).
+  - **(v1.3)** `POST /api/items/:no/submit` (role: `user`, `admin`) · `POST /api/items/:no/review` `{decision, comment}` (role: `reviewer`, `admin`) · `POST /api/items/:no/approve` `{decision, comment, evidence_file_ids}` (role: `approver`, `admin`) · `POST /api/items/:no/evidence` (file upload → Supabase Storage, returns file id) · `GET /api/items/:no/history` (workflow events + comments for one item) · `GET /api/evidence/:id` (short-lived signed download URL).
+  - **(v1.4)** `POST /api/items/:no/reopen` (role: `user`, `admin`) — only valid from a terminal `workflow_state`; moves the item back to `In Progress` so it can be edited and resubmitted.
 - **Frontend**
   - Existing tabs (Overview, Tracker, Category, Reference, Appendix) work against data fetched from the BFF instead of embedded constants.
   - Read-only users see no editable inputs on the Tracker tab (status/owner/note become plain text).
@@ -220,6 +232,16 @@ so that the full decision trail for a requirement is reconstructable during an a
 - **Extended Audit Log (v1.3)**
   - Every workflow action (submit, review OK/reject, approve/complied-with-condition/NC/reject) is captured in the audit trail with actor, item, from-state, to-state, comment, and timestamp — extending the existing `audit_log` pattern already used for status/owner/note edits (§ v1.0), not a separate/parallel logging system.
   - Admin's existing audit log view (P1 from v1.0) should be extended to show workflow events, not just field edits, once built.
+- **Reopen for Edit / "Request for Approval" (v1.4)**
+  - Once an item's `workflow_state` is one of the 3 terminal states (`Compliant`, `Complied with Condition`, `Not Compliant`), **Owner and Evidence(note) become read-only** for `user` (and stay editable for `admin`, consistent with admin's break-glass override elsewhere in the workflow).
+  - A new **"Request for Approval"** button appears (role: `user`, `admin`) only when `workflow_state` is one of those 3 terminal states. Clicking it:
+    - Transitions `workflow_state` → `In Progress`.
+    - Transitions `status` → `In Progress` (the item stops counting as Compliant/Partial in the Overview KPIs, radar, and grade panels the moment it's reopened — it shouldn't keep getting credit for a decision that's actively being revised).
+    - Writes an `item_workflow_events` row (from-state = the prior terminal state, to-state = `In Progress`, actor = the User).
+    - No comment is required to reopen (matches the existing "Submit for Approval" action, which also doesn't require one) — evidence of *why* it was reopened lives in whatever the User then changes and submits.
+  - After reopening, the item behaves exactly like any other `In Progress` item: Owner/Evidence are editable again, and the existing **"Submit for Approval"** → Reviewer → Approver flow applies unchanged — a reopened item goes through the full flow again, not a shortcut back to its old decision.
+  - **ClickUp Task link is exempt from this lock** — editable by `user`/`admin` regardless of `workflow_state` (terminal, mid-review, or otherwise). It's a reference to external remediation work, not compliance evidence, so gating it behind the approval workflow was never the intent.
+  - The BFF must reject a direct `owner`/`note` edit via the existing `PATCH /api/items/:no` when `workflow_state` is terminal (403, "reopen via Request for Approval first"), while continuing to accept `clickup_url` edits unconditionally on that same endpoint.
 
 ### P1 — Nice-to-Have
 
@@ -238,9 +260,11 @@ so that the full decision trail for a requirement is reconstructable during an a
 - SSO if AutoCorp later requires it for this tool.
 - **(v1.3)** Email/Slack/Teams notifications on submit/reject/approve.
 - **(v1.3)** Per-category Reviewer/Approver assignment instead of global workflow roles.
-- **(v1.3)** Reopen flow for already-decided items, preserving prior decision history.
+- ~~**(v1.3)** Reopen flow for already-decided items~~ — shipped in v1.4.
 - **(v1.3)** Deeper ClickUp API integration (task status sync, auto-creating tasks from the dashboard).
 - **(v1.3)** SLA/due-date tracking with an overdue flag once an item enters `Pending Review`/`Pending Approval`.
+- **(v1.4)** Locking Owner/Evidence during `Pending Review`/`Pending Approval` too, not just after a terminal decision (see § Non-Goals).
+- **(v1.4)** A "what changed since last approval" diff view when an item is reopened and resubmitted.
 
 ## 7. Data Model (overview)
 
@@ -290,6 +314,7 @@ Full DDL lives in `supabase/schema.sql`.
 - ~~**"Complied with Condition" evidence requirement — AND or OR**~~ — **RESOLVED (2026-08-10, stakeholder):** at least one of evidence file or comment (OR, not AND).
 - ~~**Does Approver-level "Not Compliant" need a new status value**~~ — **RESOLVED (2026-08-10, stakeholder):** no new value — `Not Applicable` is renamed/repurposed to `Not Compliant` instead. Stakeholder was shown the concrete tradeoff (1 existing production item currently marked `Not Applicable` will be reinterpreted as `Not Compliant`, and the system loses the ability to mark an item "doesn't apply to us" going forward) and confirmed this is acceptable.
 - **Rejection routing** (stakeholder, v1.3, non-blocking): assumed both Reviewer-reject and Approver-reject go straight back to the User (skip re-review), not back one step (Approver→Reviewer). Confirm this matches expectations.
+- **Does reopening reset `status` to `In Progress` immediately** (stakeholder, v1.4, non-blocking): assumed yes — an item stops counting as Compliant/Partial in the Overview/radar/grade the instant it's reopened, not just after resubmission. The alternative (keep showing the old status until a new decision lands) would let the dashboard overstate compliance while evidence is actively being revised, which seems worse — but flagging in case COE&S wants the old status to persist until the new decision replaces it.
 
 ## 10. Timeline Considerations
 

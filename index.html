@@ -47,6 +47,9 @@ const WF_BG = {
   "Rejected":"bg-red-100 text-red-700","Compliant":"bg-green-100 text-green-700",
   "Complied with Condition":"bg-amber-100 text-amber-700","Not Compliant":"bg-red-100 text-red-700"
 };
+// v1.4: Owner/Evidence lock once an item reaches one of these — reopen via
+// "Request for Approval". ClickUp Task link is exempt, always editable.
+const TERMINAL_WF = ["Compliant","Complied with Condition","Not Compliant"];
 const GRADE_COLOR = {A:"#16a34a",B:"#0ea5e9",C:"#d97706",D:"#ea580c",E:"#dc2626"};
 const GRADE_BG = {A:"bg-green-100 text-green-700",B:"bg-sky-100 text-sky-700",C:"bg-amber-100 text-amber-700",D:"bg-orange-100 text-orange-700",E:"bg-red-100 text-red-700"};
 function gradeFor(pct){ return pct>=80?'A':pct>=60?'B':pct>=40?'C':pct>=20?'D':'E'; }
@@ -357,10 +360,12 @@ function tracker(){
         ?`<div class="mt-1"><span class="text-[10px] px-2 py-0.5 rounded-full font-medium ${WF_BG[wf]}">${WF_TH[wf]}</span></div>`:'')
       +(isAdmin()?`<div class="mt-1"><select onchange="setField(${it.no},'status',this.value)" class="text-[10px] border border-slate-200 rounded px-1 py-0.5 bg-white">
           ${STATUSES.map(s2=>`<option value="${s2}" ${s2===st?'selected':''}>${s2}</option>`).join('')}</select></div>`:'');
-    const ownerField=editable
+    const locked=TERMINAL_WF.includes(wf) && !isAdmin();
+    const canEditFields=editable && !locked;
+    const ownerField=canEditFields
       ?`<input value="${esc(owner)}" onchange="setField(${it.no},'owner',this.value)" placeholder="ระบุชื่อ / หน่วยงาน — Name / Unit" class="w-full mt-1 text-sm border border-slate-300 rounded-lg px-2 py-1.5">`
       :`<div class="w-full mt-1 text-sm text-slate-600">${esc(owner)||'<span class="text-slate-300">—</span>'}</div>`;
-    const noteField=editable
+    const noteField=canEditFields
       ?`<input value="${esc(note)}" onchange="setField(${it.no},'note',this.value)" placeholder="บันทึกหลักฐาน / Gap / Action" class="w-full mt-1 text-sm border border-slate-300 rounded-lg px-2 py-1.5">`
       :`<div class="w-full mt-1 text-sm text-slate-600">${esc(note)||'<span class="text-slate-300">—</span>'}</div>`;
     const clickupField=`<div class="flex gap-1.5 items-center mt-1">
@@ -399,6 +404,7 @@ function tracker(){
           <div><label class="text-xs font-bold text-slate-500">หมายเหตุ / หลักฐานอ้างอิง <span class="en">/ Note · Evidence</span></label>${noteField}</div>
           <div><label class="text-xs font-bold text-slate-500">งาน ClickUp <span class="en">/ Task (ClickUp)</span></label>${clickupField}</div>
         </div>
+        ${locked&&editable?'<div class="text-[11px] text-amber-600 mt-2">\u{1F512} รายการนี้อนุมัติแล้ว — แก้ไข Owner/Evidence ไม่ได้จนกว่าจะกด "ส่งขออนุมัติใหม่" ด้านล่าง / This item is decided — Owner/Evidence are locked until you click "Request for Approval" below.</div>':''}
         ${workflowPanel(it,wf)}
         <div class="mt-3 pt-3 border-t border-slate-200">
           <button onclick="toggleHistory(${it.no})" class="text-xs text-blue-600 hover:underline">${EXPANDED_HISTORY[it.no]?'ซ่อนประวัติ / Hide history':'\u{1F553} ดูประวัติ / View history'}</button>
@@ -488,6 +494,12 @@ function workflowPanel(it,wf){
   if(wf==='Rejected'){
     return `<div class="mt-3 pt-3 border-t border-slate-200 text-xs text-red-500">รายการนี้ถูกตีกลับ — ดูสาเหตุในประวัติด้านล่าง / This item was rejected — see the reason in History below</div>`;
   }
+  if(canSubmit() && TERMINAL_WF.includes(wf)){
+    return `<div class="mt-3 pt-3 border-t border-slate-200 bg-slate-50 -mx-6 px-6 py-3">
+      <button onclick="reopenItem(${no})" class="text-sm px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-800 text-white font-medium">\u{1F513} ส่งขออนุมัติใหม่ / Request for Approval</button>
+      <div class="text-[11px] text-slate-400 mt-1">ปลดล็อก Owner/Evidence เพื่อแก้ไข แล้วเดินเข้ากระบวนการตรวจทาน-อนุมัติใหม่ทั้งหมด / Unlocks Owner/Evidence for editing and walks the item through Review → Approval again from scratch</div>
+    </div>`;
+  }
   return '';
 }
 let HISTORY={}, EXPANDED_HISTORY={};
@@ -515,6 +527,11 @@ function historyPanel(no){
 async function submitItem(no){
   try{ await fetchJSON('/api/items/'+no+'/submit', {method:'POST'}); await refreshItems(); }
   catch(err){ alert('ส่งไม่สำเร็จ / Submit failed: '+err.message); }
+}
+async function reopenItem(no){
+  if(!confirm('รายการนี้ผ่านการอนุมัติแล้ว ต้องการปลดล็อกเพื่อแก้ไขและเข้ากระบวนการตรวจทาน-อนุมัติใหม่ใช่หรือไม่? / This item was already decided — reopen it for editing and send it through Review → Approval again?')) return;
+  try{ await fetchJSON('/api/items/'+no+'/reopen', {method:'POST'}); await refreshItems(); }
+  catch(err){ alert('เปิดแก้ไขไม่สำเร็จ / Reopen failed: '+err.message); }
 }
 async function reviewItem(no,decision){
   const comment=(document.getElementById('rc-'+no)||{}).value||'';
