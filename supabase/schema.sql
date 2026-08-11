@@ -224,3 +224,19 @@ alter table checklist_items add column if not exists content_th  text not null d
 alter table checklist_items add column if not exists standard_th text not null default '';
 alter table checklist_items add column if not exists evidence_th text not null default '';
 alter table checklist_items add column if not exists qtype_th    text not null default '';
+
+-- ---------------------------------------------------------------------------
+-- v1.5b: Thai translations for the Appendix 1-5 tables.
+--
+-- `data_th` mirrors `data` row-for-row and key-for-key; the client swaps the
+-- whole array when Thai is active, so the shapes must stay identical. Values
+-- that drive badge colours (level / type / edr / sysctrl) are deliberately
+-- kept as the English key inside data_th, and the client renders a localized
+-- label for them — translating the key itself would break the colour lookup.
+--
+-- `note` is new because the legacy `note` field on Appendix 2 was being
+-- dropped at seed time and never reached the UI at all.
+-- ---------------------------------------------------------------------------
+alter table appendices add column if not exists note    text  not null default '';
+alter table appendices add column if not exists note_th text  not null default '';
+alter table appendices add column if not exists data_th jsonb not null default '[]'::jsonb;

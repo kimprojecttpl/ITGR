@@ -30,6 +30,11 @@ export default async function handler(req, res) {
     relatedQ: a.related_q,
     kind: a.kind,
     data: a.data,
+    // v1.5 — Thai table rows, same shape as `data`. Empty array means "not
+    // translated"; the client falls back to the English rows.
+    dataTh: a.data_th ?? [],
+    note: a.note ?? "",
+    noteTh: a.note_th ?? "",
   }));
 
   res.status(200).json({ appendices });

@@ -119,8 +119,22 @@ async function seedDrive() {
   console.log(`drive_folders: ${folderRows.length} rows`);
 }
 
+// Same split as the checklist: Thai for the appendix tables lives in its own
+// file so regenerating appendices.json can't clobber it.
+function readAppendixTranslations() {
+  try {
+    const doc = readJson("appendices-th.json");
+    return new Map(doc.appendices.map((a) => [a.n, a]));
+  } catch (err) {
+    if (err.code !== "ENOENT") throw err;
+    console.warn("data/appendices-th.json not found — seeding English appendices only.");
+    return new Map();
+  }
+}
+
 async function seedAppendices() {
   const appx = readJson("appendices.json");
+  const th = readAppendixTranslations();
   const rows = appx.map((a, i) => ({
     id: a.n,
     seq: i,
@@ -132,10 +146,16 @@ async function seedAppendices() {
     related_q: a.relatedQ ?? [],
     kind: a.kind,
     data: a.data,
+    // `note` was previously dropped here, so Appendix 2's footnote never
+    // reached the UI even though the JSON carried it.
+    note: a.note ?? "",
+    note_th: th.get(a.n)?.noteTh ?? "",
+    data_th: th.get(a.n)?.data ?? [],
   }));
   const { error } = await supabase.from("appendices").upsert(rows, { onConflict: "id" });
   if (error) throw error;
-  console.log(`appendices: ${rows.length} rows`);
+  const translated = rows.filter((r) => r.data_th.length).length;
+  console.log(`appendices: ${rows.length} rows (${translated} with Thai tables)`);
 }
 
 await seedChecklistItems();

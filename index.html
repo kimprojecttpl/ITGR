@@ -705,14 +705,27 @@ function appendixView(){
   }).join('');
   return `<section class="mt-6">${intro}${cards}
     <div class="bg-blue-50 border border-blue-100 rounded-xl p-4 text-xs text-slate-500">
-      <b>${t('หมายเหตุ','Note')}:</b> ${t('เนื้อหาในตารางภาคผนวกคงข้อความภาษาอังกฤษตามต้นฉบับทางการเสมอ (หัวตารางแปลตามภาษาที่เลือก) — คัดลอกจากไฟล์ ITGR Checklist FY2025 (sheet Appendix 1-5) การจับคู่กับหมวดอ้างอิงจากข้อกำหนดในไฟล์ที่ระบุชื่อภาคผนวกนั้นโดยตรง','Appendix table content is always kept in the official English source text (only the column headers follow the selected language). It is copied from the ITGR Checklist FY2025 workbook (Appendix 1-5 sheets); category mapping is derived from checklist requirements that explicitly reference each appendix.')}
+      <b>${t('หมายเหตุ','Note')}:</b> ${t('เนื้อหาภาคผนวกคัดลอกจากไฟล์ ITGR Checklist FY2025 (sheet Appendix 1-5) การจับคู่กับหมวดอ้างอิงจากข้อกำหนดที่ระบุชื่อภาคผนวกนั้นโดยตรง — <b>คำแปลภาษาไทยในตารางแปลด้วย AI และยังไม่ผ่านการตรวจทาน ต้นฉบับที่ยึดถือทางการคือภาษาอังกฤษ กด &quot;EN&quot; ที่มุมขวาบนเพื่อดูต้นฉบับ</b>','Appendix content is copied from the ITGR Checklist FY2025 workbook (Appendix 1-5 sheets); category mapping is derived from checklist requirements that explicitly reference each appendix. This is the official English source text.')}
     </div>
   </section>`;
 }
 function thd(arr){ return '<thead><tr class="bg-blue-800 text-white text-xs">'+arr.map(h=>`<th class="px-2 py-2 text-left align-bottom">${h}</th>`).join('')+'</tr></thead>'; }
+// Appendix rows in the active language. `dataTh` mirrors `data` row-for-row,
+// so this is a whole-array swap rather than a per-field merge — and it falls
+// back to English the moment a translation is missing.
+function apRows(ap){ return (LANG==='th' && ap.dataTh && ap.dataTh.length) ? ap.dataTh : ap.data; }
+function apNote(ap){ return LANG==='th' ? (ap.noteTh||ap.note) : ap.note; }
+// Classification values stay English inside the data (they key the badge
+// colours below); these render the reader-facing label instead.
+const PWD_LEVEL_TH = {"Required":"บังคับ","Recommended":"แนะนำ"};
+const LOG_TYPE_TH  = {"Authentication":"การยืนยันตัวตน","Operation":"การปฏิบัติการ","Communication":"การสื่อสาร"};
+const LEVEL_TH     = {"Strictly confidential":"ลับที่สุด","Confidential":"ลับ","Internal use only":"ใช้ภายในเท่านั้น"};
+function lvlLabel(v){ return LANG==='th' ? (PWD_LEVEL_TH[v]||v||'-') : (v||'-'); }
+function logTypeLabel(v){ return LANG==='th' ? (LOG_TYPE_TH[v]||v) : v; }
+function confLabel(v){ return LANG==='th' ? (LEVEL_TH[v]||v) : v; }
 function appendixBody(ap){
   if(ap.kind==='sections'){
-    return ap.data.map(sec=>`
+    return apRows(ap).map(sec=>`
       <div class="mb-3">
         <div class="text-sm font-bold text-blue-700 mb-1">${esc(sec.header)}</div>
         <div class="overflow-x-auto"><table class="w-full text-left border border-slate-200">
@@ -726,48 +739,48 @@ function appendixBody(ap){
   if(ap.kind==='pwd'){
     return `<div class="overflow-x-auto"><table class="w-full text-left border border-slate-200">
       ${thd(['#',t('หัวข้อ','Setting'),t('ข้อกำหนด','Requirement'),t('ระดับ (บังคับ/แนะนำ)','Required / Recommended'),'System Control',t('ข้อกำหนดทางเลือก','Alternative')])}
-      <tbody>${ap.data.map(r=>`<tr class="border-t border-slate-100 align-top text-xs">
+      <tbody>${apRows(ap).map(r=>`<tr class="border-t border-slate-100 align-top text-xs">
         <td class="px-2 py-2 text-slate-400">${esc(r.no)}</td>
         <td class="px-2 py-2 font-medium text-slate-700">${esc(r.setting)}</td>
         <td class="px-2 py-2 text-slate-600">${ml(r.req)}</td>
-        <td class="px-2 py-2"><span class="px-2 py-0.5 rounded-full ${r.level==='Required'?'bg-red-100 text-red-700':(r.level==='Recommended'?'bg-amber-100 text-amber-700':'bg-slate-100 text-slate-500')}">${esc(r.level)||'-'}</span></td>
+        <td class="px-2 py-2"><span class="px-2 py-0.5 rounded-full ${r.level==='Required'?'bg-red-100 text-red-700':(r.level==='Recommended'?'bg-amber-100 text-amber-700':'bg-slate-100 text-slate-500')}">${esc(lvlLabel(r.level))}</span></td>
         <td class="px-2 py-2 text-center text-slate-600">${esc(r.sysctrl)||'-'}</td>
         <td class="px-2 py-2 text-slate-500">${ml(r.alt)}</td></tr>`).join('')}</tbody>
       </table></div>
-      ${ap.note?`<div class="text-[10px] text-slate-400 mt-1">${esc(ap.note)}</div>`:''}`;
+      ${apNote(ap)?`<div class="text-[10px] text-slate-400 mt-1">${esc(apNote(ap))}</div>`:''}`;
   }
   if(ap.kind==='logs'){
     return `<div class="overflow-x-auto"><table class="w-full text-left border border-slate-200">
       ${thd(['#',t('ระบบ','System'),t('ระบบย่อย','Equipment / Subsystem'),t('ประเภท Log','Type'),t('รายการที่ต้องเก็บ','Items to obtain and store')])}
-      <tbody>${ap.data.map(r=>`<tr class="border-t border-slate-100 align-top text-xs">
+      <tbody>${apRows(ap).map(r=>`<tr class="border-t border-slate-100 align-top text-xs">
         <td class="px-2 py-2 text-slate-400">${esc(r.no)}</td>
         <td class="px-2 py-2 font-medium text-slate-700">${esc(r.system)}</td>
         <td class="px-2 py-2 text-slate-600">${esc(r.sub)}</td>
-        <td class="px-2 py-2"><span class="px-2 py-0.5 rounded-full ${r.type==='Authentication'?'bg-blue-100 text-blue-700':(r.type==='Operation'?'bg-violet-100 text-violet-700':'bg-sky-100 text-sky-700')}">${esc(r.type)}</span></td>
+        <td class="px-2 py-2"><span class="px-2 py-0.5 rounded-full ${r.type==='Authentication'?'bg-blue-100 text-blue-700':(r.type==='Operation'?'bg-violet-100 text-violet-700':'bg-sky-100 text-sky-700')}">${esc(logTypeLabel(r.type))}</span></td>
         <td class="px-2 py-2 text-slate-600">${esc(r.item)}</td></tr>`).join('')}</tbody>
       </table></div>`;
   }
   if(ap.kind==='scenario'){
     return `<div class="overflow-x-auto"><table class="w-full text-left border border-slate-200">
-      ${thd(['#',t('สถานการณ์','Scenario'),t('แหล่ง Log','Log source'),'EDR<div class="en text-[10px]">Q79</div>','SIEM<div class="en text-[10px]">Q81</div>','Secure Storage<div class="en text-[10px]">Q92</div>',t('ตัวอย่างกฎการตรวจจับ','Detection rule example')])}
-      <tbody>${ap.data.map(r=>`<tr class="border-t border-slate-100 align-top text-xs">
+      ${thd(['#',t('สถานการณ์','Scenario'),t('แหล่ง Log','Log source'),'EDR (Q79)','SIEM (Q81)',t('ที่จัดเก็บปลอดภัย (Q92)','Secure Storage (Q92)'),t('ตัวอย่างกฎการตรวจจับ','Detection rule example')])}
+      <tbody>${apRows(ap).map(r=>`<tr class="border-t border-slate-100 align-top text-xs">
         <td class="px-2 py-2 text-slate-400">${esc(r.no)}</td>
         <td class="px-2 py-2 font-medium text-slate-700">${esc(r.scenario)}</td>
         <td class="px-2 py-2 text-slate-600">${esc(r.src)}</td>
-        <td class="px-2 py-2 text-center">${esc(r.edr)||'-'}</td>
+        <td class="px-2 py-2 text-center">${esc(lvlLabel(r.edr))}</td>
         <td class="px-2 py-2 text-slate-600">${ml(r.siem)}</td>
-        <td class="px-2 py-2 text-center text-slate-600">${esc(r.store)||'-'}</td>
+        <td class="px-2 py-2 text-center text-slate-600">${esc(lvlLabel(r.store))}</td>
         <td class="px-2 py-2 text-slate-500">${ml(r.rule)}</td></tr>`).join('')}</tbody>
       </table></div>`;
   }
   if(ap.kind==='assets'){
     return `<div class="overflow-x-auto"><table class="w-full text-left border border-slate-200">
       ${thd(['No.',t('หมวดสารสนเทศ','Category'),t('ชื่อสารสนเทศ','Name of information asset'),t('ระดับชั้นความลับ','Confidentiality level'),t('ระยะเวลาเก็บรักษา','Retention period')])}
-      <tbody>${ap.data.map(r=>`<tr class="border-t border-slate-100 align-top text-xs">
+      <tbody>${apRows(ap).map(r=>`<tr class="border-t border-slate-100 align-top text-xs">
         <td class="px-2 py-2 text-slate-400">${esc(r.no)}</td>
         <td class="px-2 py-2 font-medium text-slate-700">${esc(r.cat)}</td>
         <td class="px-2 py-2 text-slate-600">${esc(r.name)}</td>
-        <td class="px-2 py-2"><span class="px-2 py-0.5 rounded-full whitespace-nowrap ${LEVEL_BG[r.level]||'bg-slate-100 text-slate-500'}">${esc(r.level)}</span></td>
+        <td class="px-2 py-2"><span class="px-2 py-0.5 rounded-full whitespace-nowrap ${LEVEL_BG[r.level]||'bg-slate-100 text-slate-500'}">${esc(confLabel(r.level))}</span></td>
         <td class="px-2 py-2 text-center text-slate-600">${esc(r.retention)||'-'}</td></tr>`).join('')}</tbody>
       </table></div>`;
   }
