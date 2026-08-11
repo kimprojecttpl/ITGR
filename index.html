@@ -62,6 +62,42 @@ let ME = null; // { name, role } — set by init() after /api/me
 function priTh(p){ return p==="◎"?"สูงสุด":(p==="〇"?"สำคัญ":"ปกติ"); }
 function priEn(p){ return p==="◎"?"Top Priority":(p==="〇"?"Priority":"Standard"); }
 function esc(s){ const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
+
+// ---------- LANGUAGE (v1.5) ----------
+// The dashboard used to render every label as "ไทย / English" side by side.
+// It now renders ONE language and lets the reader switch. `t()` is the single
+// chokepoint: pass both strings, get the active one back.
+let LANG = 'th';
+try { const saved = localStorage.getItem('itgr_lang'); if(saved==='th'||saved==='en') LANG = saved; } catch(e){}
+function t(th,en){ return LANG==='th' ? th : en; }
+function setLang(l){
+  if(l!==LANG){
+    LANG = l;
+    try{ localStorage.setItem('itgr_lang', l); }catch(e){}
+    document.documentElement.lang = l;
+    render();
+  }
+}
+function langToggle(){
+  const btn=(code,label)=>`<button onclick="setLang('${code}')" aria-pressed="${LANG===code}" class="px-2.5 py-1 text-xs font-medium rounded-md transition ${LANG===code?'bg-white text-blue-700 shadow-sm':'text-blue-100 hover:bg-white/10'}">${label}</button>`;
+  return `<div class="inline-flex items-center gap-0.5 p-0.5 rounded-lg bg-white/15" role="group" aria-label="${t('เลือกภาษา','Language')}">${btn('th','ไทย')}${btn('en','EN')}</div>`;
+}
+// Localized checklist content. English is the authoritative ITGR text, so a
+// missing/blank Thai translation falls back to it rather than rendering empty.
+function fieldOf(it,key){
+  if(LANG==='th'){ const v=it[key+'Th']; if(v) return v; }
+  return it[key] || '';
+}
+// True when the Thai text on screen is a translation rather than the source —
+// drives the "unverified translation" notice.
+function isTranslated(it){ return LANG==='th' && !!(it.contentTh||it.standardTh||it.evidenceTh||it.nameTh); }
+function catLabel(c){ return LANG==='th' ? (c.shortTh||c.short) : c.short; }
+function catFull(c){ return LANG==='th' ? (c.fullTh||c.full) : c.full; }
+function itemCatLabel(it){ return LANG==='th' ? (it.catShortTh||it.catShort) : it.catShort; }
+function riskLabel(r){ return LANG==='th' ? (RISK_TH[r]||'-') : (r||'-'); }
+function statusLabel(s){ return LANG==='th' ? (STATUS_TH[s]||s) : s; }
+function wfLabel(w){ return LANG==='th' ? (WF_TH[w]||w) : w; }
+function priLabel(p){ return LANG==='th' ? priTh(p) : priEn(p); }
 // v1.3 role helpers — `user`/`reviewer`/`approver` replace the old
 // `read_write` tier, each scoped to one stage of the approval workflow.
 // `admin` can act at any stage (break-glass / cover for absence).
@@ -74,7 +110,7 @@ function canApprove(){ return ME && (ME.role==='admin' || ME.role==='approver');
 let CATS = [];
 function rebuildCats(){
   CATS = [];
-  ITEMS.forEach(it=>{ if(!CATS.find(c=>c.no===it.catNo)) CATS.push({no:it.catNo,full:it.category,short:it.catShort,shortTh:it.catShortTh}); });
+  ITEMS.forEach(it=>{ if(!CATS.find(c=>c.no===it.catNo)) CATS.push({no:it.catNo,full:it.category,fullTh:it.categoryTh,short:it.catShort,shortTh:it.catShortTh}); });
   CATS.sort((a,b)=>a.no-b.no);
 }
 
@@ -147,19 +183,21 @@ function header(){
    +'<div class="max-w-7xl mx-auto px-4 py-6"><div class="flex items-center gap-3 flex-wrap justify-between">'
    +'<div class="flex items-center gap-3 flex-wrap">'
    +'<div class="w-11 h-11 rounded-xl bg-white/15 flex items-center justify-center text-2xl">\u{1F6E1}️</div>'
-   +'<div><h1 class="text-xl sm:text-2xl font-bold leading-tight">แดชบอร์ดการกำกับดูแล IT — AutoCorp <span class="font-normal text-blue-100">/ IT Governance Dashboard</span></h1>'
-   +'<p class="text-blue-100 text-sm">Marubeni Group IT Governance Rules (ITGR) Checklist · FY2025 Ver.1 · ปรับปรุง 1 เม.ย. 2025 / Updated 1 Apr 2025</p>'
+   +'<div><h1 class="text-xl sm:text-2xl font-bold leading-tight">'+t('แดชบอร์ดการกำกับดูแล IT — AutoCorp','IT Governance Dashboard — AutoCorp')+'</h1>'
+   +'<p class="text-blue-100 text-sm">Marubeni Group IT Governance Rules (ITGR) Checklist · FY2025 Ver.1 · '+t('ปรับปรุง 1 เม.ย. 2025','Updated 1 Apr 2025')+'</p>'
    +'</div></div>'
-   +(ME?'<div class="text-right text-sm noprint"><div class="font-medium">'+esc(ME.name)+'</div><div class="text-blue-200 text-xs">'+roleLabel(ME.role)+'</div><button onclick="logout()" class="mt-1 text-xs px-2 py-1 rounded-lg bg-white/15 hover:bg-white/25">ออกจากระบบ / Logout</button></div>':'')
+   +'<div class="flex items-center gap-3 noprint">'+langToggle()
+   +(ME?'<div class="text-right text-sm"><div class="font-medium">'+esc(ME.name)+'</div><div class="text-blue-200 text-xs">'+roleLabel(ME.role)+'</div><button onclick="logout()" class="mt-1 text-xs px-2 py-1 rounded-lg bg-white/15 hover:bg-white/25">'+t('ออกจากระบบ','Logout')+'</button></div>':'')
+   +'</div>'
    +'</div></div></header>';
 }
 function roleLabel(r){
   return {
-    admin:'ผู้ดูแลระบบ / Admin',
-    user:'ผู้เตรียมข้อมูล / User',
-    reviewer:'ผู้ตรวจทาน / Reviewer',
-    approver:'ผู้อนุมัติ / Approver',
-    read_only:'อ่านอย่างเดียว / Read-Only'
+    admin:t('ผู้ดูแลระบบ','Admin'),
+    user:t('ผู้เตรียมข้อมูล','User'),
+    reviewer:t('ผู้ตรวจทาน','Reviewer'),
+    approver:t('ผู้อนุมัติ','Approver'),
+    read_only:t('อ่านอย่างเดียว','Read-Only')
   }[r] || r;
 }
 // Items waiting on the current user's action — drives the nav badge.
@@ -173,26 +211,26 @@ function pendingForMe(){
 }
 function nav(){
   const tabs=[
-    ["overview","\u{1F4CA} ภาพรวม","Overview"],
-    ["tracker","✅ รายการติดตาม","Checklist Tracker"],
-    ["category","\u{1F5C2}️ รายหมวด","By Category"],
-    ["appendix","\u{1F4D1} ภาคผนวก","Appendix 1–5"],
-    ["reference","\u{1F4DA} คลังเอกสารอ้างอิง","Reference Library"]];
-  if(isAdmin()) tabs.push(["admin","\u{1F512} ผู้ดูแลระบบ","Admin"]);
+    ["overview","\u{1F4CA} "+t("ภาพรวม","Overview")],
+    ["tracker","✅ "+t("รายการติดตาม","Checklist Tracker")],
+    ["category","\u{1F5C2}️ "+t("รายหมวด","By Category")],
+    ["appendix","\u{1F4D1} "+t("ภาคผนวก 1–5","Appendix 1–5")],
+    ["reference","\u{1F4DA} "+t("คลังเอกสารอ้างอิง","Reference Library")]];
+  if(isAdmin()) tabs.push(["admin","\u{1F512} "+t("ผู้ดูแลระบบ","Admin")]);
   const pending=pendingForMe();
   return '<div class="bg-blue-900 noprint"><div class="max-w-7xl mx-auto px-4 flex gap-1 overflow-x-auto">'+
-    tabs.map(t=>'<button onclick="setTab(\''+t[0]+'\')" class="tabbtn relative '+(TAB===t[0]?'active':'text-blue-100 hover:bg-blue-800')+' px-4 py-2 text-sm font-medium rounded-t-lg whitespace-nowrap transition leading-tight text-left">'
-      +t[1]+(t[0]==='tracker'&&pending>0?' <span class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold align-middle">'+pending+'</span>':'')
-      +'<span class="block text-[10px] '+(TAB===t[0]?'text-blue-400':'text-blue-300/70')+' font-normal">'+t[2]+'</span></button>').join('')
+    tabs.map(tab=>'<button onclick="setTab(\''+tab[0]+'\')" class="tabbtn relative '+(TAB===tab[0]?'active':'text-blue-100 hover:bg-blue-800')+' px-4 py-2.5 text-sm font-medium rounded-t-lg whitespace-nowrap transition leading-tight text-left">'
+      +tab[1]+(tab[0]==='tracker'&&pending>0?' <span class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold align-middle">'+pending+'</span>':'')
+      +'</button>').join('')
   +'</div></div>';
 }
 function footer(){
   return '<footer class="border-t border-slate-200 bg-white"><div class="max-w-7xl mx-auto px-4 py-4 text-xs text-slate-400">'
-   +'แหล่งข้อมูล / Source: (Autocorp) IT Governance Rules Checklist_Eng.xlsx · Google Drive "IT DD 2025" · จัดทำโดย / Prepared by ITGR Advisor<br>'
-   +'ข้อมูลทั้งหมดจัดเก็บบน Supabase และซิงก์แบบเรียลไทม์ระหว่างผู้ใช้ / All data is stored in Supabase and shared across all users'
+   +t('แหล่งข้อมูล: ','Source: ')+'(Autocorp) IT Governance Rules Checklist_Eng.xlsx · Google Drive "IT DD 2025" · '+t('จัดทำโดย ITGR Advisor','Prepared by ITGR Advisor')+'<br>'
+   +t('ข้อมูลทั้งหมดจัดเก็บบน Supabase และซิงก์แบบเรียลไทม์ระหว่างผู้ใช้','All data is stored in Supabase and shared across all users')
    +'</div></footer>';
 }
-function H(th,en){ return th+' <span class="en text-sm">/ '+en+'</span>'; }
+function H(th,en){ return t(th,en); }
 
 // ---------- OVERVIEW ----------
 function overview(){
@@ -203,8 +241,7 @@ function overview(){
   const pri=ITEMS.filter(i=>i.priority==="〇").length;
   const kpi=(th,en,val,sub,color)=>`<div class="bg-white rounded-xl border border-slate-200 p-4">
      <div class="text-3xl font-bold" style="color:${color}">${val}</div>
-     <div class="text-sm font-semibold text-slate-700 mt-1 leading-tight">${th}</div>
-     <div class="text-[11px] text-slate-400 leading-tight">${en}</div>
+     <div class="text-sm font-semibold text-slate-700 mt-1 leading-tight">${t(th,en)}</div>
      <div class="text-xs text-slate-400 mt-1">${sub}</div></div>`;
   const riskSeg=RISK_ORDER.map(r=>({v:riskC[r],c:RISK_COLOR[r]}));
   const statusSeg=STATUSES.map(s=>({v:sc[s],c:STATUS_COLOR[s]}));
@@ -212,42 +249,40 @@ function overview(){
     const n=ITEMS.filter(i=>i.catNo===c.no).length;
     const p=progressPct(i=>i.catNo===c.no);
     return `<div class="mb-2.5">
-      <div class="flex justify-between text-xs mb-1"><span class="font-medium text-slate-600">${c.no}. ${esc(c.shortTh)} <span class="en">/ ${esc(c.short)}</span></span><span class="text-slate-400">${p}% · ${n} ข้อ</span></div>
+      <div class="flex justify-between text-xs mb-1"><span class="font-medium text-slate-600">${c.no}. ${esc(catLabel(c))}</span><span class="text-slate-400">${p}% · ${n} ${t('ข้อ','items')}</span></div>
       <div class="h-2.5 bg-slate-100 rounded-full overflow-hidden"><div class="h-full rounded-full" style="width:${p}%;background:linear-gradient(90deg,#2563eb,#0ea5e9)"></div></div>
     </div>`;
   }).join('');
   return `
   <section class="mt-6">
     <div class="bg-white rounded-xl border border-slate-200 p-5 mb-6">
-      <h2 class="text-lg font-bold text-blue-800 mb-2">บทสรุปผู้บริหาร <span class="en text-base">/ Executive Summary</span></h2>
-      <p class="text-sm text-slate-600 leading-relaxed mb-2">
-        <b>[TH]</b> แดชบอร์ดนี้ใช้ติดตามและควบคุมการปฏิบัติตาม <b>Marubeni Group IT Governance Rules (ITGR) Checklist FY2025</b>
+      <h2 class="text-lg font-bold text-blue-800 mb-2">${t('บทสรุปผู้บริหาร','Executive Summary')}</h2>
+      <p class="text-sm text-slate-600 leading-relaxed">${t(
+        `แดชบอร์ดนี้ใช้ติดตามและควบคุมการปฏิบัติตาม <b>Marubeni Group IT Governance Rules (ITGR) Checklist FY2025</b>
         ซึ่งประกอบด้วย <b>${total} ข้อคำถาม</b> ใน <b>${CATS.length} หมวด</b> ครอบคลุมการกำกับดูแลความมั่นคงปลอดภัยสารสนเทศ การจัดการบัญชีผู้ใช้
         การจัดการสินทรัพย์ IT ซอฟต์แวร์และการป้องกันไวรัส การควบคุมเครือข่าย ระบบงานทางธุรกิจ การเตรียมพร้อมรับเหตุการณ์ และการจัดการสารสนเทศ
-        แต่ละข้อกำหนดถูกจัดระดับความเสี่ยงและระดับความสำคัญ ทีม COE&S สามารถบันทึกสถานะการปฏิบัติ ผู้รับผิดชอบ และหมายเหตุของแต่ละข้อได้ในแท็บรายการติดตาม
-      </p>
-      <p class="text-sm text-slate-500 leading-relaxed">
-        <b>[EN]</b> This dashboard tracks and controls compliance with the <b>Marubeni Group IT Governance Rules (ITGR) Checklist FY2025</b>,
+        แต่ละข้อกำหนดถูกจัดระดับความเสี่ยงและระดับความสำคัญ ทีม COE&S สามารถบันทึกสถานะการปฏิบัติ ผู้รับผิดชอบ และหมายเหตุของแต่ละข้อได้ในแท็บรายการติดตาม`,
+        `This dashboard tracks and controls compliance with the <b>Marubeni Group IT Governance Rules (ITGR) Checklist FY2025</b>,
         comprising <b>${total} questions</b> across <b>${CATS.length} categories</b> — covering information security governance, account management,
-        IT asset management, software & anti-virus, network control, business systems, incident preparedness and handling of information assets.
-        Each requirement carries a risk and priority rating; the COE&S team records implementation status, owner and notes in the Checklist Tracker tab.
-      </p>
+        IT asset management, software &amp; anti-virus, network control, business systems, incident preparedness and handling of information assets.
+        Each requirement carries a risk and priority rating; the COE&S team records implementation status, owner and notes in the Checklist Tracker tab.`
+      )}</p>
     </div>
     <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
-      ${kpi("ข้อกำหนดทั้งหมด","Total Requirements",total,CATS.length+" หมวด / categories","#1d4ed8")}
-      ${kpi("ความเสี่ยงสูงมาก","Very High Risk",riskC["Very High"],"ระดับสูงสุด / highest","#dc2626")}
-      ${kpi("ลำดับความสำคัญสูงสุด","Top Priority ◎",topPri,"+ สำคัญ / Priority 〇 "+pri,"#ea580c")}
-      ${kpi("สอดคล้องแล้ว","Compliant",sc["Compliant"],"ผ่านการตรวจสอบ / verified","#16a34a")}
-      ${kpi("ความคืบหน้ารวม","Overall Progress",pct+"%",sc["Not Started"]+" ยังไม่เริ่ม / not started","#0ea5e9")}
+      ${kpi("ข้อกำหนดทั้งหมด","Total Requirements",total,CATS.length+" "+t("หมวด","categories"),"#1d4ed8")}
+      ${kpi("ความเสี่ยงสูงมาก","Very High Risk",riskC["Very High"],t("ระดับสูงสุด","highest"),"#dc2626")}
+      ${kpi("ลำดับความสำคัญสูงสุด ◎","Top Priority ◎",topPri,"+ "+t("สำคัญ 〇 ","Priority 〇 ")+pri,"#ea580c")}
+      ${kpi("สอดคล้องแล้ว","Compliant",sc["Compliant"],t("ผ่านการตรวจสอบ","verified"),"#16a34a")}
+      ${kpi("ความคืบหน้ารวม","Overall Progress",pct+"%",sc["Not Started"]+" "+t("ยังไม่เริ่ม","not started"),"#0ea5e9")}
     </div>
     <div class="grid lg:grid-cols-3 gap-4 mb-6">
       <div class="bg-white rounded-xl border border-slate-200 p-5">
         <h3 class="font-bold text-slate-700 mb-3 text-sm">${H("การกระจายตามระดับความเสี่ยง","Risk Distribution")}</h3>
         <div class="flex items-center gap-4">
           <div class="relative">${donut(riskSeg,140,24)}
-            <div class="absolute inset-0 flex flex-col items-center justify-center"><div class="text-2xl font-bold text-slate-700">${total}</div><div class="text-[10px] text-slate-400">ข้อ / items</div></div>
+            <div class="absolute inset-0 flex flex-col items-center justify-center"><div class="text-2xl font-bold text-slate-700">${total}</div><div class="text-[10px] text-slate-400">${t('ข้อ','items')}</div></div>
           </div>
-          <div class="text-xs space-y-1.5">${RISK_ORDER.map(r=>`<div class="flex items-center gap-2"><span class="w-3 h-3 rounded shrink-0" style="background:${RISK_COLOR[r]}"></span><span class="text-slate-600">${RISK_TH[r]} <span class="en">/ ${r}</span></span><b class="text-slate-700">${riskC[r]}</b></div>`).join('')}</div>
+          <div class="text-xs space-y-1.5">${RISK_ORDER.map(r=>`<div class="flex items-center gap-2"><span class="w-3 h-3 rounded shrink-0" style="background:${RISK_COLOR[r]}"></span><span class="text-slate-600">${riskLabel(r)}</span><b class="text-slate-700">${riskC[r]}</b></div>`).join('')}</div>
         </div>
       </div>
       <div class="bg-white rounded-xl border border-slate-200 p-5">
@@ -256,7 +291,7 @@ function overview(){
           <div class="relative">${donut(statusSeg,140,24)}
             <div class="absolute inset-0 flex flex-col items-center justify-center"><div class="text-2xl font-bold text-blue-700">${pct}%</div><div class="text-[10px] text-slate-400">progress</div></div>
           </div>
-          <div class="text-xs space-y-1.5">${STATUSES.map(s=>`<div class="flex items-center gap-2"><span class="w-3 h-3 rounded shrink-0" style="background:${STATUS_COLOR[s]}"></span><span class="text-slate-600">${STATUS_TH[s]} <span class="en">/ ${s}</span></span><b class="text-slate-700">${sc[s]}</b></div>`).join('')}</div>
+          <div class="text-xs space-y-1.5">${STATUSES.map(s=>`<div class="flex items-center gap-2"><span class="w-3 h-3 rounded shrink-0" style="background:${STATUS_COLOR[s]}"></span><span class="text-slate-600">${statusLabel(s)}</span><b class="text-slate-700">${sc[s]}</b></div>`).join('')}</div>
         </div>
       </div>
       <div class="bg-white rounded-xl border border-slate-200 p-5">
@@ -271,25 +306,25 @@ function overview(){
 function priorityGradeSection(overallPct){
   const overallGrade=gradeFor(overallPct);
   const tiers=[
-    {mark:'◎',label:'สูงสุด',labelEn:'Top Priority ◎',filter:i=>i.priority==='◎'},
-    {mark:'〇',label:'สำคัญ',labelEn:'Priority 〇',filter:i=>i.priority==='〇'}
+    {label:t('สูงสุด ◎','Top Priority ◎'),filter:i=>i.priority==='◎'},
+    {label:t('สำคัญ 〇','Priority 〇'),filter:i=>i.priority==='〇'}
   ];
-  const tierCards=tiers.map(t=>{
-    const arr=ITEMS.filter(t.filter);
+  const tierCards=tiers.map(tier=>{
+    const arr=ITEMS.filter(tier.filter);
     if(!arr.length) return `<div class="flex-1 min-w-[220px] border border-slate-100 rounded-lg p-3">
-      <div class="text-sm font-bold text-slate-700 mb-2">${t.label} <span class="en">/ ${t.labelEn}</span></div>
-      <div class="text-xs text-slate-300 italic">— ไม่มีข้อกำหนดในกลุ่มนี้ / no items in this tier —</div>
+      <div class="text-sm font-bold text-slate-700 mb-2">${tier.label}</div>
+      <div class="text-xs text-slate-300 italic">— ${t('ไม่มีข้อกำหนดในกลุ่มนี้','no items in this tier')} —</div>
     </div>`;
-    const p=progressPct(t.filter);
+    const p=progressPct(tier.filter);
     const g=gradeFor(p);
-    const sc=statusCounts(t.filter);
-    const statusRow=STATUSES.filter(s=>sc[s]).map(s=>`<span class="text-[10px] px-2 py-0.5 rounded-full ${STATUS_BG[s]}">${STATUS_TH[s]}/${s} ${sc[s]}</span>`).join('');
+    const sc=statusCounts(tier.filter);
+    const statusRow=STATUSES.filter(s=>sc[s]).map(s=>`<span class="text-[10px] px-2 py-0.5 rounded-full ${STATUS_BG[s]}">${statusLabel(s)} ${sc[s]}</span>`).join('');
     return `<div class="flex-1 min-w-[220px] border border-slate-100 rounded-lg p-3">
       <div class="flex items-center justify-between gap-2 mb-2 flex-wrap">
-        <div class="text-sm font-bold text-slate-700">${t.label} <span class="en">/ ${t.labelEn}</span></div>
+        <div class="text-sm font-bold text-slate-700">${tier.label}</div>
         <div class="flex items-center gap-1.5">
           <b class="text-sm px-2 py-0.5 rounded ${GRADE_BG[g]}">${g}</b>
-          <span class="text-slate-400 text-xs">${p}% · ${arr.length} ข้อ / items</span>
+          <span class="text-slate-400 text-xs">${p}% · ${arr.length} ${t('ข้อ','items')}</span>
         </div>
       </div>
       <div class="flex flex-wrap gap-1.5">${statusRow}</div>
@@ -297,12 +332,12 @@ function priorityGradeSection(overallPct){
   }).join('');
   return `<div class="bg-white rounded-xl border border-slate-200 p-5 mt-4">
     <h3 class="font-bold text-slate-700 mb-1 text-sm">${H("เกรดรวมทุกหมวด และสถานะตามลำดับความสำคัญ","Overall Grade & Priority Status")}</h3>
-    <p class="text-[11px] text-slate-400 mb-3">เกรดรวมคำนวณจาก % ความคืบหน้าโดยรวมทั้ง 96 ข้อ (เกณฑ์เดียวกับกราฟเรดาร์ด้านล่าง) <span class="en block">/ Overall grade uses the same progress % and thresholds as the radar chart below, across all 96 items</span></p>
+    <p class="text-[11px] text-slate-400 mb-3">${t('เกรดรวมคำนวณจาก % ความคืบหน้าโดยรวมทั้ง 96 ข้อ (เกณฑ์เดียวกับกราฟเรดาร์ด้านล่าง)','Overall grade uses the same progress % and thresholds as the radar chart below, across all 96 items')}</p>
     <div class="flex flex-wrap gap-4 items-stretch">
       <div class="flex items-center gap-4 border border-slate-100 rounded-lg p-3 shrink-0">
         <div class="w-16 h-16 rounded-full flex items-center justify-center text-3xl font-bold text-white shrink-0" style="background:${GRADE_COLOR[overallGrade]}">${overallGrade}</div>
         <div>
-          <div class="text-xs text-slate-400 leading-tight">เกรดรวม (8 หมวด) <span class="en block">/ Overall grade (all 8 categories)</span></div>
+          <div class="text-xs text-slate-400 leading-tight">${t('เกรดรวม (8 หมวด)','Overall grade (all 8 categories)')}</div>
           <div class="text-2xl font-bold text-slate-700">${overallPct}%</div>
         </div>
       </div>
@@ -313,11 +348,11 @@ function priorityGradeSection(overallPct){
 function radarSection(){
   const radarData=CATS.map(c=>{
     const pct=progressPct(i=>i.catNo===c.no);
-    return {no:c.no, shortTh:c.shortTh, short:c.short, pct, grade:gradeFor(pct)};
+    return {no:c.no, label:catLabel(c), pct, grade:gradeFor(pct)};
   });
   const legend=radarData.map(d=>`<div class="flex items-center gap-2">
       <span class="w-3 h-3 rounded shrink-0" style="background:${GRADE_COLOR[d.grade]}"></span>
-      <span class="text-slate-600">${d.no}. ${esc(d.shortTh)} <span class="en">/ ${esc(d.short)}</span></span>
+      <span class="text-slate-600">${d.no}. ${esc(d.label)}</span>
       <span class="ml-auto flex items-center gap-1.5 shrink-0">
         <b class="text-xs px-1.5 py-0.5 rounded ${GRADE_BG[d.grade]}">${d.grade}</b>
         <span class="text-slate-400 text-xs w-9 text-right">${d.pct}%</span>
@@ -325,7 +360,7 @@ function radarSection(){
     </div>`).join('');
   return `<div class="bg-white rounded-xl border border-slate-200 p-5 mt-4">
     <h3 class="font-bold text-slate-700 mb-1 text-sm">${H("เกรดความสอดคล้องรายหมวด (เรดาร์)","Category Compliance Grade (Radar)")}</h3>
-    <p class="text-[11px] text-slate-400 mb-3">เกรดคำนวณจาก % ความคืบหน้าเดียวกับกราฟด้านบน — A ≥80% · B ≥60% · C ≥40% · D ≥20% · E &lt;20% <span class="en block">/ Grade uses the same progress % as the bars above — A ≥80% · B ≥60% · C ≥40% · D ≥20% · E &lt;20%</span></p>
+    <p class="text-[11px] text-slate-400 mb-3">${t('เกรดคำนวณจาก % ความคืบหน้าเดียวกับกราฟด้านบน','Grade uses the same progress % as the bars above')} — A ≥80% · B ≥60% · C ≥40% · D ≥20% · E &lt;20%</p>
     <div class="flex flex-wrap items-center gap-6">
       <div class="shrink-0 mx-auto">${radarChart(radarData,280)}</div>
       <div class="flex-1 min-w-[240px] text-xs space-y-2">${legend}</div>
@@ -341,7 +376,11 @@ function tracker(){
     if(FILTERS.pri && it.priority!==FILTERS.pri) return false;
     if(FILTERS.type && !it.qtype.startsWith(FILTERS.type)) return false;
     if(FILTERS.status){ const st=(STATE[it.no]&&STATE[it.no].status)||"Not Started"; if(st!==FILTERS.status) return false; }
-    if(FILTERS.q){ const q=FILTERS.q.toLowerCase(); if(!((it.name+' '+it.content+' '+it.article).toLowerCase().includes(q))) return false; }
+    // Search spans both languages regardless of the active one — a Thai query
+// should still find an item whose translation is missing, and vice versa.
+    if(FILTERS.q){ const q=FILTERS.q.toLowerCase();
+      const hay=[it.name,it.content,it.article,it.nameTh,it.contentTh].filter(Boolean).join(' ').toLowerCase();
+      if(!hay.includes(q)) return false; }
     return true;
   });
   const sel=(id,opts,val,ph)=>`<select id="${id}" class="text-xs border border-slate-300 rounded-lg px-2 py-1.5 bg-white">
@@ -355,62 +394,62 @@ function tracker(){
     const note=s.note||"";
     const clickupUrl=s.clickupUrl||"";
     const open=EXPANDED[it.no];
-    const statusCell=`<span class="text-[11px] px-2 py-1 rounded-full font-medium inline-block ${STATUS_BG[st]}">${STATUS_TH[st]} / ${st}</span>`
+    const statusCell=`<span class="text-[11px] px-2 py-1 rounded-full font-medium inline-block ${STATUS_BG[st]}">${statusLabel(st)}</span>`
       +(['Pending Review','Pending Approval','Rejected'].includes(wf)
-        ?`<div class="mt-1"><span class="text-[10px] px-2 py-0.5 rounded-full font-medium ${WF_BG[wf]}">${WF_TH[wf]}</span></div>`:'')
+        ?`<div class="mt-1"><span class="text-[10px] px-2 py-0.5 rounded-full font-medium ${WF_BG[wf]}">${wfLabel(wf)}</span></div>`:'')
       +(isAdmin()?`<div class="mt-1"><select onchange="setField(${it.no},'status',this.value)" class="text-[10px] border border-slate-200 rounded px-1 py-0.5 bg-white">
           ${STATUSES.map(s2=>`<option value="${s2}" ${s2===st?'selected':''}>${s2}</option>`).join('')}</select></div>`:'');
     const locked=TERMINAL_WF.includes(wf) && !isAdmin();
     const canEditFields=editable && !locked;
     const ownerField=canEditFields
-      ?`<input value="${esc(owner)}" onchange="setField(${it.no},'owner',this.value)" placeholder="ระบุชื่อ / หน่วยงาน — Name / Unit" class="w-full mt-1 text-sm border border-slate-300 rounded-lg px-2 py-1.5">`
+      ?`<input value="${esc(owner)}" onchange="setField(${it.no},'owner',this.value)" placeholder="${t('ระบุชื่อ / หน่วยงาน','Name / Unit')}" class="w-full mt-1 text-sm border border-slate-300 rounded-lg px-2 py-1.5">`
       :`<div class="w-full mt-1 text-sm text-slate-600">${esc(owner)||'<span class="text-slate-300">—</span>'}</div>`;
     const noteField=canEditFields
-      ?`<input value="${esc(note)}" onchange="setField(${it.no},'note',this.value)" placeholder="บันทึกหลักฐาน / Gap / Action" class="w-full mt-1 text-sm border border-slate-300 rounded-lg px-2 py-1.5">`
+      ?`<input value="${esc(note)}" onchange="setField(${it.no},'note',this.value)" placeholder="${t('บันทึกหลักฐาน / ช่องว่าง / การดำเนินการ','Evidence / Gap / Action')}" class="w-full mt-1 text-sm border border-slate-300 rounded-lg px-2 py-1.5">`
       :`<div class="w-full mt-1 text-sm text-slate-600">${esc(note)||'<span class="text-slate-300">—</span>'}</div>`;
     const clickupField=`<div class="flex gap-1.5 items-center mt-1">
         ${editable?`<input id="cu-${it.no}" value="${esc(clickupUrl)}" onchange="setField(${it.no},'clickupUrl',this.value)" placeholder="https://app.clickup.com/t/..." class="w-full text-sm border border-slate-300 rounded-lg px-2 py-1.5">`
           :`<div class="w-full text-sm text-slate-600">${esc(clickupUrl)||'<span class="text-slate-300">—</span>'}</div>`}
-        ${clickupUrl?`<a href="${esc(clickupUrl)}" target="_blank" rel="noopener" title="เปิดใน ClickUp / Open in ClickUp" class="shrink-0 text-xs px-2 py-1.5 rounded-lg bg-violet-100 hover:bg-violet-200 text-violet-700">\u{1F517}</a>`:''}
+        ${clickupUrl?`<a href="${esc(clickupUrl)}" target="_blank" rel="noopener" title="${t('เปิดใน ClickUp','Open in ClickUp')}" class="shrink-0 text-xs px-2 py-1.5 rounded-lg bg-violet-100 hover:bg-violet-200 text-violet-700">\u{1F517}</a>`:''}
       </div>`;
     return `<tbody class="border-b border-slate-100">
       <tr class="hover:bg-blue-50/40">
         <td class="px-2 py-2 text-center"><button onclick="toggleRow(${it.no})" class="text-blue-600 font-bold w-5">${open?'−':'+'}</button></td>
         <td class="px-2 py-2 text-center text-slate-400 text-xs">${it.no}</td>
-        <td class="px-2 py-2 text-xs text-slate-500 min-w-[130px]">${it.catNo}. ${esc(it.catShortTh)}<div class="en text-[10px]">${esc(it.catShort)}</div></td>
-        <td class="px-2 py-2 text-sm text-slate-700 font-medium min-w-[220px]">${esc(it.name)}</td>
-        <td class="px-2 py-2 text-center"><span class="text-[11px] px-2 py-0.5 rounded-full ${RISK_BG[it.risk]} whitespace-nowrap inline-block leading-tight">${RISK_TH[it.risk]||'-'}<br><span class="text-[9px] opacity-70">${it.risk||''}</span></span></td>
-        <td class="px-2 py-2 text-center text-xs">${it.priority==='◎'?'<span title="สูงสุด / Top Priority" class="text-orange-600 font-bold">◎</span>':(it.priority==='〇'?'<span title="สำคัญ / Priority" class="text-blue-600">〇</span>':'<span class="text-slate-300">–</span>')}</td>
+        <td class="px-2 py-2 text-xs text-slate-500 min-w-[130px]">${it.catNo}. ${esc(itemCatLabel(it))}</td>
+        <td class="px-2 py-2 text-sm text-slate-700 font-medium min-w-[220px]">${esc(fieldOf(it,'name'))}</td>
+        <td class="px-2 py-2 text-center"><span class="text-[11px] px-2 py-0.5 rounded-full ${RISK_BG[it.risk]} whitespace-nowrap inline-block leading-tight">${riskLabel(it.risk)}</span></td>
+        <td class="px-2 py-2 text-center text-xs">${it.priority==='◎'?`<span title="${t('สูงสุด','Top Priority')}" class="text-orange-600 font-bold">◎</span>`:(it.priority==='〇'?`<span title="${t('สำคัญ','Priority')}" class="text-blue-600">〇</span>`:'<span class="text-slate-300">–</span>')}</td>
         <td class="px-2 py-2 text-center text-xs text-slate-400 whitespace-nowrap">§${esc(it.article)}</td>
         <td class="px-2 py-2 text-center">${statusCell}</td>
       </tr>
       ${open?`<tr class="bg-slate-50"><td colspan="8" class="px-6 py-4">
         <div class="grid md:grid-cols-2 gap-4 text-sm">
-          <div><div class="text-xs font-bold text-blue-700 mb-1">เนื้อหาคำถาม <span class="en">/ Question content</span></div><div class="text-slate-600 whitespace-pre-line">${esc(it.content)}</div></div>
-          <div><div class="text-xs font-bold text-blue-700 mb-1">เกณฑ์การพิจารณาว่าได้ดำเนินมาตรการแล้ว <span class="en">/ Standards to determine measures implemented</span></div><div class="text-slate-600 whitespace-pre-line">${esc(it.standard)||'<span class="text-slate-300">—</span>'}</div></div>
-          <div><div class="text-xs font-bold text-blue-700 mb-1">หลักฐานยืนยัน <span class="en">/ Confirmation evidence</span></div><div class="text-slate-600 whitespace-pre-line">${esc(it.evidence)||'<span class="text-slate-300">—</span>'}</div></div>
-          <div><div class="text-xs font-bold text-blue-700 mb-1">รายละเอียดข้อกำหนด <span class="en">/ Requirement details</span></div>
+          <div><div class="text-xs font-bold text-blue-700 mb-1">${t('เนื้อหาคำถาม','Question content')}</div><div class="text-slate-600 whitespace-pre-line">${esc(fieldOf(it,'content'))}</div></div>
+          <div><div class="text-xs font-bold text-blue-700 mb-1">${t('เกณฑ์การพิจารณาว่าได้ดำเนินมาตรการแล้ว','Standards to determine measures implemented')}</div><div class="text-slate-600 whitespace-pre-line">${esc(fieldOf(it,'standard'))||'<span class="text-slate-300">—</span>'}</div></div>
+          <div><div class="text-xs font-bold text-blue-700 mb-1">${t('หลักฐานยืนยัน','Confirmation evidence')}</div><div class="text-slate-600 whitespace-pre-line">${esc(fieldOf(it,'evidence'))||'<span class="text-slate-300">—</span>'}</div></div>
+          <div><div class="text-xs font-bold text-blue-700 mb-1">${t('รายละเอียดข้อกำหนด','Requirement details')}</div>
             <div class="text-slate-600 text-xs space-y-0.5">
-              <div>หมวด / Category: <b>${it.catNo}. ${esc(it.catShortTh)} / ${esc(it.catShort)}</b></div>
+              <div>${t('หมวด','Category')}: <b>${it.catNo}. ${esc(itemCatLabel(it))}</b></div>
               <div>ITGR Article/Paragraph: <b>§${esc(it.article)}</b></div>
-              <div>ความเสี่ยง / Risk: <b>${RISK_TH[it.risk]||'-'} / ${it.risk||'-'}</b> · ลำดับความสำคัญ / Priority: <b>${priTh(it.priority)} / ${priEn(it.priority)}</b></div>
-              <div>ประเภทคำถาม / Question Type: <b>${esc(it.qtype)}</b></div>
+              <div>${t('ความเสี่ยง','Risk')}: <b>${riskLabel(it.risk)}</b> · ${t('ลำดับความสำคัญ','Priority')}: <b>${priLabel(it.priority)}</b></div>
+              <div>${t('ประเภทคำถาม','Question Type')}: <b>${esc(fieldOf(it,'qtype'))}</b></div>
               ${it.issue?`<div>Issue: <b>${esc(it.issue)}</b></div>`:''}
             </div>
           </div>
         </div>
         <div class="grid md:grid-cols-3 gap-3 mt-4 pt-3 border-t border-slate-200">
-          <div><label class="text-xs font-bold text-slate-500">ผู้รับผิดชอบ <span class="en">/ Owner</span></label>${ownerField}</div>
-          <div><label class="text-xs font-bold text-slate-500">หมายเหตุ / หลักฐานอ้างอิง <span class="en">/ Note · Evidence</span></label>${noteField}</div>
-          <div><label class="text-xs font-bold text-slate-500">งาน ClickUp <span class="en">/ Task (ClickUp)</span></label>${clickupField}</div>
+          <div><label class="text-xs font-bold text-slate-500">${t('ผู้รับผิดชอบ','Owner')}</label>${ownerField}</div>
+          <div><label class="text-xs font-bold text-slate-500">${t('หมายเหตุ / หลักฐานอ้างอิง','Note · Evidence')}</label>${noteField}</div>
+          <div><label class="text-xs font-bold text-slate-500">${t('งาน ClickUp','Task (ClickUp)')}</label>${clickupField}</div>
         </div>
-        ${locked&&editable?'<div class="text-[11px] text-amber-600 mt-2">\u{1F512} รายการนี้อนุมัติแล้ว — แก้ไข Owner/Evidence ไม่ได้จนกว่าจะกด "ส่งขออนุมัติใหม่" ด้านล่าง / This item is decided — Owner/Evidence are locked until you click "Request for Approval" below.</div>':''}
+        ${locked&&editable?`<div class="text-[11px] text-amber-600 mt-2">\u{1F512} ${t('รายการนี้อนุมัติแล้ว — แก้ไข Owner/Evidence ไม่ได้จนกว่าจะกด "ส่งขออนุมัติใหม่" ด้านล่าง','This item is decided — Owner/Evidence are locked until you click "Request for Approval" below.')}</div>`:''}
         ${workflowPanel(it,wf)}
         <div class="mt-3 pt-3 border-t border-slate-200">
-          <button onclick="toggleHistory(${it.no})" class="text-xs text-blue-600 hover:underline">${EXPANDED_HISTORY[it.no]?'ซ่อนประวัติ / Hide history':'\u{1F553} ดูประวัติ / View history'}</button>
+          <button onclick="toggleHistory(${it.no})" class="text-xs text-blue-600 hover:underline">${EXPANDED_HISTORY[it.no]?t('ซ่อนประวัติ','Hide history'):'\u{1F553} '+t('ดูประวัติ','View history')}</button>
           ${EXPANDED_HISTORY[it.no]?historyPanel(it.no):''}
         </div>
-        <div class="text-[10px] text-slate-300 mt-2">หมายเหตุ: เนื้อหาข้อกำหนด ITGR คงไว้เป็นภาษาอังกฤษตามต้นฉบับทางการ / ITGR requirement text is kept in the official English source.</div>
+        ${sourceNotice(it)}
       </td></tr>`:''}
     </tbody>`;
   }).join('');
@@ -418,41 +457,52 @@ function tracker(){
     ${editable?'':trackerRoleBanner()}
     <div class="bg-white rounded-xl border border-slate-200 p-4 mb-4 noprint">
       <div class="flex flex-wrap gap-2 items-center">
-        <input id="fq" value="${esc(FILTERS.q)}" placeholder="\u{1F50D} ค้นหา ชื่อข้อ / เนื้อหา / Article — Search" class="text-xs border border-slate-300 rounded-lg px-3 py-1.5 flex-1 min-w-[220px]">
-        ${sel('fcat',CATS.map(c=>[c.no,c.no+'. '+c.shortTh+' / '+c.short]),FILTERS.cat,'ทุกหมวด / All categories')}
-        ${sel('frisk',RISK_ORDER.map(r=>[r,RISK_TH[r]+' / '+r]),FILTERS.risk,'ทุกระดับความเสี่ยง / All risk')}
-        ${sel('fpri',[['◎','◎ สูงสุด / Top Priority'],['〇','〇 สำคัญ / Priority']],FILTERS.pri,'ทุกลำดับความสำคัญ / All priority')}
-        ${sel('ftype',[['①','① System-related'],['②-1','②-1 Operations (significant)'],['②-2','②-2 Operations (other)']],FILTERS.type,'ทุกประเภทคำถาม / All types')}
-        ${sel('fstatus',STATUSES.map(s=>[s,STATUS_TH[s]+' / '+s]),FILTERS.status,'ทุกสถานะ / All status')}
-        <button onclick="clearFilters()" class="text-xs px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600">ล้างตัวกรอง / Clear</button>
-        <button onclick="window.print()" class="text-xs px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white">\u{1F5A8}️ พิมพ์ / Print · PDF</button>
+        <input id="fq" value="${esc(FILTERS.q)}" placeholder="\u{1F50D} ${t('ค้นหา ชื่อข้อ / เนื้อหา / Article','Search name / content / article')}" class="text-xs border border-slate-300 rounded-lg px-3 py-1.5 flex-1 min-w-[220px]">
+        ${sel('fcat',CATS.map(c=>[c.no,c.no+'. '+catLabel(c)]),FILTERS.cat,t('ทุกหมวด','All categories'))}
+        ${sel('frisk',RISK_ORDER.map(r=>[r,riskLabel(r)]),FILTERS.risk,t('ทุกระดับความเสี่ยง','All risk'))}
+        ${sel('fpri',[['◎','◎ '+t('สูงสุด','Top Priority')],['〇','〇 '+t('สำคัญ','Priority')]],FILTERS.pri,t('ทุกลำดับความสำคัญ','All priority'))}
+        ${sel('ftype',[['①',t('① ด้านระบบ','① System-related')],['②-1',t('②-1 ด้านการปฏิบัติงาน (สำคัญ)','②-1 Operations (significant)')],['②-2',t('②-2 ด้านการปฏิบัติงาน (อื่น ๆ)','②-2 Operations (other)')]],FILTERS.type,t('ทุกประเภทคำถาม','All types'))}
+        ${sel('fstatus',STATUSES.map(s=>[s,statusLabel(s)]),FILTERS.status,t('ทุกสถานะ','All status'))}
+        <button onclick="clearFilters()" class="text-xs px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600">${t('ล้างตัวกรอง','Clear')}</button>
+        <button onclick="window.print()" class="text-xs px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white">\u{1F5A8}️ ${t('พิมพ์ / PDF','Print · PDF')}</button>
       </div>
-      <div class="text-xs text-slate-400 mt-2">แสดง / Showing <b class="text-slate-600">${arr.length}</b> จาก / of ${ITEMS.length} ข้อ / items</div>
+      <div class="text-xs text-slate-400 mt-2">${t('แสดง','Showing')} <b class="text-slate-600">${arr.length}</b> ${t('จาก','of')} ${ITEMS.length} ${t('ข้อ','items')}</div>
     </div>
     <div class="bg-white rounded-xl border border-slate-200 overflow-x-auto">
       <table class="w-full text-left">
         <thead><tr class="bg-blue-800 text-white text-xs align-bottom">
           <th class="px-2 py-2 w-8"></th>
           <th class="px-2 py-2">No</th>
-          <th class="px-2 py-2">หมวด<div class="en text-[10px]">Category</div></th>
-          <th class="px-2 py-2">ชื่อข้อกำหนด<div class="en text-[10px]">Requirement (EN source)</div></th>
-          <th class="px-2 py-2 text-center">ความเสี่ยง<div class="en text-[10px]">Risk</div></th>
-          <th class="px-2 py-2 text-center">สำคัญ<div class="en text-[10px]">Pri</div></th>
+          <th class="px-2 py-2">${t('หมวด','Category')}</th>
+          <th class="px-2 py-2">${t('ชื่อข้อกำหนด','Requirement')}</th>
+          <th class="px-2 py-2 text-center">${t('ความเสี่ยง','Risk')}</th>
+          <th class="px-2 py-2 text-center">${t('สำคัญ','Pri')}</th>
           <th class="px-2 py-2 text-center">Article</th>
-          <th class="px-2 py-2 text-center">สถานะ<div class="en text-[10px]">Status</div></th>
+          <th class="px-2 py-2 text-center">${t('สถานะ','Status')}</th>
         </tr></thead>
-        ${rows||'<tbody><tr><td colspan="8" class="text-center text-slate-400 py-10 text-sm">ไม่พบข้อกำหนดที่ตรงกับตัวกรอง / No requirements match the filters</td></tr></tbody>'}
+        ${rows||`<tbody><tr><td colspan="8" class="text-center text-slate-400 py-10 text-sm">${t('ไม่พบข้อกำหนดที่ตรงกับตัวกรอง','No requirements match the filters')}</td></tr></tbody>`}
       </table>
     </div>
   </section>`;
 }
 
+// Footnote under an expanded item. In English mode the reader is looking at
+// the authoritative ITGR wording; in Thai mode they are looking at an
+// unreviewed machine translation and must be told so — this is a compliance
+// document, and a mistranslated requirement is a real audit risk.
+function sourceNotice(it){
+  if(isTranslated(it)){
+    return `<div class="text-[10px] text-amber-600/80 mt-2 border-t border-amber-100 pt-2">\u{26A0}\u{FE0F} คำแปลภาษาไทยนี้แปลด้วย AI และยังไม่ผ่านการตรวจทาน — ต้นฉบับที่ยึดถือทางการคือภาษาอังกฤษ กด "EN" ที่มุมขวาบนเพื่อดูต้นฉบับ</div>`;
+  }
+  return `<div class="text-[10px] text-slate-300 mt-2">${t('หมายเหตุ: เนื้อหาข้อกำหนด ITGR คงไว้เป็นภาษาอังกฤษตามต้นฉบับทางการ','ITGR requirement text is the official English source.')}</div>`;
+}
+
 // ---------- WORKFLOW (v1.3) ----------
 function trackerRoleBanner(){
   const msg={
-    reviewer:'คุณเป็น Reviewer — ตรวจทานรายการที่ "รอตรวจทาน" ได้ (คลิกเปิดรายการ) แก้ไข Owner/Evidence/Task ไม่ได้ / You are a Reviewer — you can review items in "Pending Review" (expand a row), but cannot edit Owner/Evidence/Task.',
-    approver:'คุณเป็น Approver — ตัดสินรายการที่ "รออนุมัติ" ได้ (คลิกเปิดรายการ) แก้ไข Owner/Evidence/Task ไม่ได้ / You are an Approver — you can decide items in "Pending Approval" (expand a row), but cannot edit Owner/Evidence/Task.',
-    read_only:'คุณมีสิทธิ์อ่านอย่างเดียว ไม่สามารถแก้ไขหรือดำเนินการใดๆ ได้ / You have read-only access — nothing here can be edited or actioned.'
+    reviewer:t('คุณเป็น Reviewer — ตรวจทานรายการที่ "รอตรวจทาน" ได้ (คลิกเปิดรายการ) แก้ไข Owner/Evidence/Task ไม่ได้','You are a Reviewer — you can review items in "Pending Review" (expand a row), but cannot edit Owner/Evidence/Task.'),
+    approver:t('คุณเป็น Approver — ตัดสินรายการที่ "รออนุมัติ" ได้ (คลิกเปิดรายการ) แก้ไข Owner/Evidence/Task ไม่ได้','You are an Approver — you can decide items in "Pending Approval" (expand a row), but cannot edit Owner/Evidence/Task.'),
+    read_only:t('คุณมีสิทธิ์อ่านอย่างเดียว ไม่สามารถแก้ไขหรือดำเนินการใดๆ ได้','You have read-only access — nothing here can be edited or actioned.')
   }[ME&&ME.role] || '';
   return msg?`<div class="bg-amber-50 border border-amber-200 text-amber-700 text-xs rounded-xl p-3 mb-4">${msg}</div>`:'';
 }
@@ -460,44 +510,44 @@ function workflowPanel(it,wf){
   const no=it.no;
   if(canSubmit() && ['Not Started','In Progress','Rejected'].includes(wf)){
     return `<div class="mt-3 pt-3 border-t border-slate-200 bg-blue-50/60 -mx-6 px-6 py-3">
-      <button onclick="submitItem(${no})" class="text-sm px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium">\u{1F4E4} ส่งขออนุมัติ / Submit for Approval</button>
-      <div class="text-[11px] text-slate-400 mt-1">ต้องกรอกผู้รับผิดชอบและหมายเหตุ/หลักฐานก่อนส่ง / Owner and Evidence note are required before submitting</div>
+      <button onclick="submitItem(${no})" class="text-sm px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium">\u{1F4E4} ${t('ส่งขออนุมัติ','Submit for Approval')}</button>
+      <div class="text-[11px] text-slate-400 mt-1">${t('ต้องกรอกผู้รับผิดชอบและหมายเหตุ/หลักฐานก่อนส่ง','Owner and Evidence note are required before submitting')}</div>
     </div>`;
   }
   if(canReview() && wf==='Pending Review'){
     return `<div class="mt-3 pt-3 border-t border-slate-200 bg-violet-50/60 -mx-6 px-6 py-3">
-      <div class="text-xs font-bold text-violet-700 mb-2">\u{1F441}️ การตรวจทาน / Reviewer action</div>
-      <textarea id="rc-${no}" rows="2" placeholder="ความเห็น (จำเป็นถ้าตีกลับ) / Comment (required if rejecting)" class="w-full text-sm border border-slate-300 rounded-lg px-2 py-1.5 mb-2"></textarea>
+      <div class="text-xs font-bold text-violet-700 mb-2">\u{1F441}️ ${t('การตรวจทาน','Reviewer action')}</div>
+      <textarea id="rc-${no}" rows="2" placeholder="${t('ความเห็น (จำเป็นถ้าตีกลับ)','Comment (required if rejecting)')}" class="w-full text-sm border border-slate-300 rounded-lg px-2 py-1.5 mb-2"></textarea>
       <div class="flex flex-wrap gap-2">
-        <button onclick="reviewItem(${no},'ok')" class="text-sm px-3 py-1.5 rounded-lg bg-green-600 hover:bg-green-700 text-white font-medium">✓ OK → ส่งต่อผู้อนุมัติ / to Approver</button>
-        <button onclick="reviewItem(${no},'reject')" class="text-sm px-3 py-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-red-700 font-medium">✕ ตีกลับ / Reject</button>
+        <button onclick="reviewItem(${no},'ok')" class="text-sm px-3 py-1.5 rounded-lg bg-green-600 hover:bg-green-700 text-white font-medium">✓ ${t('OK → ส่งต่อผู้อนุมัติ','OK → to Approver')}</button>
+        <button onclick="reviewItem(${no},'reject')" class="text-sm px-3 py-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-red-700 font-medium">✕ ${t('ตีกลับ','Reject')}</button>
       </div>
     </div>`;
   }
   if(canApprove() && wf==='Pending Approval'){
     return `<div class="mt-3 pt-3 border-t border-slate-200 bg-indigo-50/60 -mx-6 px-6 py-3">
-      <div class="text-xs font-bold text-indigo-700 mb-2">\u{2696}️ การอนุมัติ / Approver decision</div>
-      <textarea id="ac-${no}" rows="2" placeholder="ความเห็น / เงื่อนไขข้อยกเว้น — Comment / exception note" class="w-full text-sm border border-slate-300 rounded-lg px-2 py-1.5 mb-2"></textarea>
+      <div class="text-xs font-bold text-indigo-700 mb-2">\u{2696}️ ${t('การอนุมัติ','Approver decision')}</div>
+      <textarea id="ac-${no}" rows="2" placeholder="${t('ความเห็น / เงื่อนไขข้อยกเว้น','Comment / exception note')}" class="w-full text-sm border border-slate-300 rounded-lg px-2 py-1.5 mb-2"></textarea>
       <input id="af-${no}" type="file" multiple class="text-xs mb-2 block">
       <div class="flex flex-wrap gap-2">
         <button onclick="approveItem(${no},'compliant')" class="text-sm px-3 py-1.5 rounded-lg bg-green-600 hover:bg-green-700 text-white font-medium">✓ Compliant</button>
         <button onclick="approveItem(${no},'complied_with_condition')" class="text-sm px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-medium">△ Complied with Condition</button>
         <button onclick="approveItem(${no},'not_compliant')" class="text-sm px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium">✕ Not Compliant</button>
-        <button onclick="approveItem(${no},'reject')" class="text-sm px-3 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium">↩ ตีกลับให้ User / Reject</button>
+        <button onclick="approveItem(${no},'reject')" class="text-sm px-3 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium">↩ ${t('ตีกลับให้ User','Reject')}</button>
       </div>
-      <div class="text-[11px] text-slate-400 mt-1">"Complied with Condition" ต้องมีไฟล์แนบหรือ comment อย่างน้อย 1 อย่าง / requires at least an attached file or a comment</div>
+      <div class="text-[11px] text-slate-400 mt-1">${t('"Complied with Condition" ต้องมีไฟล์แนบหรือ comment อย่างน้อย 1 อย่าง','"Complied with Condition" requires at least an attached file or a comment')}</div>
     </div>`;
   }
   if(['Pending Review','Pending Approval'].includes(wf)){
-    return `<div class="mt-3 pt-3 border-t border-slate-200 text-xs text-slate-400">${wf==='Pending Review'?'รอ Reviewer ตรวจทาน / Awaiting Reviewer':'รอ Approver อนุมัติ / Awaiting Approver'}</div>`;
+    return `<div class="mt-3 pt-3 border-t border-slate-200 text-xs text-slate-400">${wf==='Pending Review'?t('รอ Reviewer ตรวจทาน','Awaiting Reviewer'):t('รอ Approver อนุมัติ','Awaiting Approver')}</div>`;
   }
   if(wf==='Rejected'){
-    return `<div class="mt-3 pt-3 border-t border-slate-200 text-xs text-red-500">รายการนี้ถูกตีกลับ — ดูสาเหตุในประวัติด้านล่าง / This item was rejected — see the reason in History below</div>`;
+    return `<div class="mt-3 pt-3 border-t border-slate-200 text-xs text-red-500">${t('รายการนี้ถูกตีกลับ — ดูสาเหตุในประวัติด้านล่าง','This item was rejected — see the reason in History below')}</div>`;
   }
   if(canSubmit() && TERMINAL_WF.includes(wf)){
     return `<div class="mt-3 pt-3 border-t border-slate-200 bg-slate-50 -mx-6 px-6 py-3">
-      <button onclick="reopenItem(${no})" class="text-sm px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-800 text-white font-medium">\u{1F513} ส่งขออนุมัติใหม่ / Request for Approval</button>
-      <div class="text-[11px] text-slate-400 mt-1">ปลดล็อก Owner/Evidence เพื่อแก้ไข แล้วเดินเข้ากระบวนการตรวจทาน-อนุมัติใหม่ทั้งหมด / Unlocks Owner/Evidence for editing and walks the item through Review → Approval again from scratch</div>
+      <button onclick="reopenItem(${no})" class="text-sm px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-800 text-white font-medium">\u{1F513} ${t('ส่งขออนุมัติใหม่','Request for Approval')}</button>
+      <div class="text-[11px] text-slate-400 mt-1">${t('ปลดล็อก Owner/Evidence เพื่อแก้ไข แล้วเดินเข้ากระบวนการตรวจทาน-อนุมัติใหม่ทั้งหมด','Unlocks Owner/Evidence for editing and walks the item through Review → Approval again from scratch')}</div>
     </div>`;
   }
   return '';
@@ -507,7 +557,7 @@ async function toggleHistory(no){
   if(EXPANDED_HISTORY[no]){ EXPANDED_HISTORY[no]=false; render(); return; }
   if(!HISTORY[no]){
     try{ HISTORY[no]=await fetchJSON('/api/items/'+no+'/history'); }
-    catch(err){ alert('โหลดประวัติไม่สำเร็จ / Failed to load history: '+err.message); return; }
+    catch(err){ alert(t('โหลดประวัติไม่สำเร็จ: ','Failed to load history: ')+err.message); return; }
   }
   EXPANDED_HISTORY[no]=true; render();
 }
@@ -516,34 +566,34 @@ function historyPanel(no){
   const events=(h.events||[]).map(e=>`<div class="text-xs border-l-2 border-slate-200 pl-2 py-1">
       <div class="text-slate-400">${new Date(e.created_at).toLocaleString()} · <b class="text-slate-600">${esc(e.actor_name)}</b></div>
       <div class="text-slate-600">${esc(e.from_state||'—')} → <b>${esc(e.to_state)}</b>${e.comment?': '+esc(e.comment):''}</div>
-    </div>`).join('') || '<div class="text-xs text-slate-300 italic">— ยังไม่มีความเคลื่อนไหว / no events yet —</div>';
+    </div>`).join('') || `<div class="text-xs text-slate-300 italic">— ${t('ยังไม่มีความเคลื่อนไหว','no events yet')} —</div>`;
   const files=(h.evidence||[]).map(f=>`<button onclick="openEvidence(${f.id})" class="text-xs text-blue-600 hover:underline block text-left">\u{1F4CE} ${esc(f.file_name)} <span class="text-slate-400">(${esc(f.uploaded_by_name)})</span></button>`).join('');
   return `<div class="mt-2 bg-white border border-slate-200 rounded-lg p-3">
-    <div class="text-xs font-bold text-slate-500 mb-2">ลำดับเหตุการณ์ / Timeline</div>
+    <div class="text-xs font-bold text-slate-500 mb-2">${t('ลำดับเหตุการณ์','Timeline')}</div>
     <div class="space-y-1 mb-3">${events}</div>
-    ${files?`<div class="text-xs font-bold text-slate-500 mb-1">หลักฐานแนบ / Evidence files</div><div class="space-y-1">${files}</div>`:''}
+    ${files?`<div class="text-xs font-bold text-slate-500 mb-1">${t('หลักฐานแนบ','Evidence files')}</div><div class="space-y-1">${files}</div>`:''}
   </div>`;
 }
 async function submitItem(no){
   try{ await fetchJSON('/api/items/'+no+'/submit', {method:'POST'}); await refreshItems(); }
-  catch(err){ alert('ส่งไม่สำเร็จ / Submit failed: '+err.message); }
+  catch(err){ alert(t('ส่งไม่สำเร็จ: ','Submit failed: ')+err.message); }
 }
 async function reopenItem(no){
-  if(!confirm('รายการนี้ผ่านการอนุมัติแล้ว ต้องการปลดล็อกเพื่อแก้ไขและเข้ากระบวนการตรวจทาน-อนุมัติใหม่ใช่หรือไม่? / This item was already decided — reopen it for editing and send it through Review → Approval again?')) return;
+  if(!confirm(t('รายการนี้ผ่านการอนุมัติแล้ว ต้องการปลดล็อกเพื่อแก้ไขและเข้ากระบวนการตรวจทาน-อนุมัติใหม่ใช่หรือไม่?','This item was already decided — reopen it for editing and send it through Review → Approval again?'))) return;
   try{ await fetchJSON('/api/items/'+no+'/reopen', {method:'POST'}); await refreshItems(); }
-  catch(err){ alert('เปิดแก้ไขไม่สำเร็จ / Reopen failed: '+err.message); }
+  catch(err){ alert(t('เปิดแก้ไขไม่สำเร็จ: ','Reopen failed: ')+err.message); }
 }
 async function reviewItem(no,decision){
   const comment=(document.getElementById('rc-'+no)||{}).value||'';
-  if(decision==='reject' && !comment.trim()){ alert('กรุณาระบุความเห็นก่อนตีกลับ / A comment is required to reject'); return; }
+  if(decision==='reject' && !comment.trim()){ alert(t('กรุณาระบุความเห็นก่อนตีกลับ','A comment is required to reject')); return; }
   try{ await fetchJSON('/api/items/'+no+'/review', {method:'POST', body:{decision,comment}}); await refreshItems(); }
-  catch(err){ alert('บันทึกไม่สำเร็จ / Failed: '+err.message); }
+  catch(err){ alert(t('บันทึกไม่สำเร็จ: ','Failed: ')+err.message); }
 }
 function fileToBase64(file){
   return new Promise((resolve,reject)=>{
     const reader=new FileReader();
     reader.onload=()=>resolve(String(reader.result).split(',')[1]||'');
-    reader.onerror=()=>reject(new Error('อ่านไฟล์ไม่สำเร็จ / Could not read file'));
+    reader.onerror=()=>reject(new Error(t('อ่านไฟล์ไม่สำเร็จ','Could not read file')));
     reader.readAsDataURL(file);
   });
 }
@@ -553,11 +603,11 @@ async function uploadEvidenceFile(no,file){
 }
 async function approveItem(no,decision){
   const comment=(document.getElementById('ac-'+no)||{}).value||'';
-  if(decision==='reject' && !comment.trim()){ alert('กรุณาระบุความเห็นก่อนตีกลับ / A comment is required to reject'); return; }
+  if(decision==='reject' && !comment.trim()){ alert(t('กรุณาระบุความเห็นก่อนตีกลับ','A comment is required to reject')); return; }
   const fileInput=document.getElementById('af-'+no);
   const files=fileInput && fileInput.files ? Array.from(fileInput.files) : [];
   if(decision==='complied_with_condition' && !comment.trim() && files.length===0){
-    alert('Complied with Condition ต้องมีไฟล์แนบหรือ comment อย่างน้อย 1 อย่าง / requires at least an attached file or a comment');
+    alert(t('Complied with Condition ต้องมีไฟล์แนบหรือ comment อย่างน้อย 1 อย่าง','Complied with Condition requires at least an attached file or a comment'));
     return;
   }
   try{
@@ -565,11 +615,11 @@ async function approveItem(no,decision){
     for(const f of files){ const uploaded=await uploadEvidenceFile(no,f); fileIds.push(uploaded.file.id); }
     await fetchJSON('/api/items/'+no+'/approve', {method:'POST', body:{decision,comment,evidence_file_ids:fileIds}});
     await refreshItems();
-  }catch(err){ alert('บันทึกไม่สำเร็จ / Failed: '+err.message); }
+  }catch(err){ alert(t('บันทึกไม่สำเร็จ: ','Failed: ')+err.message); }
 }
 async function openEvidence(id){
   try{ const r=await fetchJSON('/api/evidence/'+id); window.open(r.url,'_blank'); }
-  catch(err){ alert('เปิดไฟล์ไม่สำเร็จ / Failed to open file: '+err.message); }
+  catch(err){ alert(t('เปิดไฟล์ไม่สำเร็จ: ','Failed to open file: ')+err.message); }
 }
 async function refreshItems(){
   // Full refetch (not just the one item) keeps STATE, the Overview/radar/
@@ -593,15 +643,15 @@ function categoryView(){
     const rc={}; RISK_ORDER.forEach(r=>rc[r]=arr.filter(i=>i.risk===r).length);
     return `<div class="bg-white rounded-xl border border-slate-200 p-5">
       <div class="flex items-start justify-between gap-3">
-        <div><div class="text-xs text-blue-600 font-bold">หมวด ${c.no} / Category ${c.no}</div>
-          <h3 class="font-bold text-slate-800 leading-snug">${esc(c.shortTh)} <span class="en text-sm">/ ${esc(c.short)}</span></h3>
-          <p class="text-[11px] text-slate-400 mt-0.5">${esc(c.full)}</p></div>
-        <div class="text-right shrink-0"><div class="text-2xl font-bold text-blue-700">${p}%</div><div class="text-[10px] text-slate-400">${arr.length} ข้อ / items</div></div>
+        <div><div class="text-xs text-blue-600 font-bold">${t('หมวด','Category')} ${c.no}</div>
+          <h3 class="font-bold text-slate-800 leading-snug">${esc(catLabel(c))}</h3>
+          <p class="text-[11px] text-slate-400 mt-0.5">${esc(catFull(c))}</p></div>
+        <div class="text-right shrink-0"><div class="text-2xl font-bold text-blue-700">${p}%</div><div class="text-[10px] text-slate-400">${arr.length} ${t('ข้อ','items')}</div></div>
       </div>
       <div class="h-2 bg-slate-100 rounded-full overflow-hidden my-3"><div class="h-full rounded-full" style="width:${p}%;background:linear-gradient(90deg,#2563eb,#0ea5e9)"></div></div>
-      <div class="flex flex-wrap gap-1.5 mb-2">${RISK_ORDER.filter(r=>rc[r]).map(r=>`<span class="text-[10px] px-2 py-0.5 rounded-full ${RISK_BG[r]}">${RISK_TH[r]}/${r} ${rc[r]}</span>`).join('')}</div>
-      <div class="flex flex-wrap gap-1.5">${STATUSES.filter(s=>sc[s]).map(s=>`<span class="text-[10px] px-2 py-0.5 rounded-full ${STATUS_BG[s]}">${STATUS_TH[s]}/${s} ${sc[s]}</span>`).join('')}</div>
-      <button onclick="openCat(${c.no})" class="mt-3 text-xs text-blue-600 hover:text-blue-800 font-medium">ดูข้อกำหนดในหมวดนี้ / View requirements →</button>
+      <div class="flex flex-wrap gap-1.5 mb-2">${RISK_ORDER.filter(r=>rc[r]).map(r=>`<span class="text-[10px] px-2 py-0.5 rounded-full ${RISK_BG[r]}">${riskLabel(r)} ${rc[r]}</span>`).join('')}</div>
+      <div class="flex flex-wrap gap-1.5">${STATUSES.filter(s=>sc[s]).map(s=>`<span class="text-[10px] px-2 py-0.5 rounded-full ${STATUS_BG[s]}">${statusLabel(s)} ${sc[s]}</span>`).join('')}</div>
+      <button onclick="openCat(${c.no})" class="mt-3 text-xs text-blue-600 hover:text-blue-800 font-medium">${t('ดูข้อกำหนดในหมวดนี้','View requirements')} →</button>
     </div>`;
   }).join('')}</section>`;
 }
@@ -612,21 +662,18 @@ function reference(){
   const ICON={folder:"\u{1F4C1}",pdf:"\u{1F4C4}",xlsx:"\u{1F4D7}",gsheet:"\u{1F4D7}"};
   return `<section class="mt-6">
     <div class="bg-white rounded-xl border border-slate-200 p-5 mb-4">
-      <h2 class="text-lg font-bold text-blue-800 mb-1">คลังเอกสารอ้างอิง — IT DD 2025 <span class="en text-base">/ Reference Library</span></h2>
-      <p class="text-sm text-slate-500">ดัชนีโฟลเดอร์และไฟล์ใน Google Drive จัดตามโครงสร้าง 10 หมวด IT Due Diligence — คลิกเพื่อเปิดใน Drive</p>
-      <p class="text-xs text-slate-400">Index of folders and files in Google Drive, organized by the 10 IT Due Diligence categories — click to open in Drive.</p>
-      <a href="https://drive.google.com/drive/folders/164O6xrl2rmRfCeal9mzw3fg1_Yl9Pjj0" target="_blank" class="inline-block mt-2 text-xs text-blue-600 hover:underline">\u{1F517} เปิดโฟลเดอร์หลัก / Open main folder — IT Governance</a>
+      <h2 class="text-lg font-bold text-blue-800 mb-1">${t('คลังเอกสารอ้างอิง — IT DD 2025','Reference Library — IT DD 2025')}</h2>
+      <p class="text-sm text-slate-500">${t('ดัชนีโฟลเดอร์และไฟล์ใน Google Drive จัดตามโครงสร้าง 10 หมวด IT Due Diligence — คลิกเพื่อเปิดใน Drive','Index of folders and files in Google Drive, organized by the 10 IT Due Diligence categories — click to open in Drive.')}</p>
+      <a href="https://drive.google.com/drive/folders/164O6xrl2rmRfCeal9mzw3fg1_Yl9Pjj0" target="_blank" class="inline-block mt-2 text-xs text-blue-600 hover:underline">\u{1F517} ${t('เปิดโฟลเดอร์หลัก — IT Governance','Open main folder — IT Governance')}</a>
     </div>
     <div class="grid md:grid-cols-2 gap-3">${DRIVE.map(f=>`
       <div class="bg-white rounded-xl border border-slate-200 p-4">
         <a href="${f.url}" target="_blank" class="font-bold text-slate-800 hover:text-blue-700">\u{1F4C1} ${esc(f.title)}</a>
         ${f.files.length?`<ul class="mt-2 space-y-1">${f.files.map(x=>`<li class="text-sm"><a href="${x.url}" target="_blank" class="text-slate-600 hover:text-blue-600 hover:underline">${ICON[x.ty]||'\u{1F4CE}'} ${esc(x.t)}</a> <span class="text-[10px] text-slate-300 uppercase">${x.ty}</span></li>`).join('')}</ul>`
-        :`<p class="text-xs text-slate-300 mt-2 italic">— ยังไม่มีไฟล์ในโฟลเดอร์นี้ / No files in this folder —</p>`}
+        :`<p class="text-xs text-slate-300 mt-2 italic">— ${t('ยังไม่มีไฟล์ในโฟลเดอร์นี้','No files in this folder')} —</p>`}
       </div>`).join('')}</div>
     <div class="bg-blue-50 border border-blue-100 rounded-xl p-4 mt-4 text-xs text-slate-500">
-      <b>หมายเหตุ / Note:</b> รายการนี้เป็นดัชนีอ้างอิง ณ วันที่จัดทำ (21 พ.ค. 2026) ดึงจากโครงสร้างโฟลเดอร์จริงใน Drive โดยไม่มีการดาวน์โหลดไฟล์ —
-      เอกสาร Policy / Procedure หลักของ AutoCorp อยู่ในหมวด 5 (Internal Control) และหมวด 10 (IT Security).<br>
-      This is a reference index as of 21 May 2026, drawn from the actual Drive folder structure without downloading any files.
+      <b>${t('หมายเหตุ','Note')}:</b> ${t('รายการนี้เป็นดัชนีอ้างอิง ณ วันที่จัดทำ (21 พ.ค. 2026) ดึงจากโครงสร้างโฟลเดอร์จริงใน Drive โดยไม่มีการดาวน์โหลดไฟล์ — เอกสาร Policy / Procedure หลักของ AutoCorp อยู่ในหมวด 5 (Internal Control) และหมวด 10 (IT Security)','This is a reference index as of 21 May 2026, drawn from the actual Drive folder structure without downloading any files. AutoCorp&rsquo;s main Policy / Procedure documents sit in category 5 (Internal Control) and category 10 (IT Security).')}
     </div>
   </section>`;
 }
@@ -636,32 +683,29 @@ function ml(t){ return esc(t).split(' / ').join('<br>'); }
 const LEVEL_BG = {"Strictly confidential":"bg-red-100 text-red-700","Confidential":"bg-orange-100 text-orange-700","Internal use only":"bg-sky-100 text-sky-700"};
 function appendixView(){
   const intro=`<div class="bg-white rounded-xl border border-slate-200 p-5 mb-4">
-    <h2 class="text-lg font-bold text-blue-800 mb-1">ภาคผนวก ITGR Checklist <span class="en text-base">/ ITGR Checklist Appendices 1-5</span></h2>
-    <p class="text-sm text-slate-500">เอกสารแนบ 5 ชุดจากไฟล์ ITGR Checklist FY2025 — จัดเรียงตามหมวดของข้อกำหนดที่อ้างอิงถึงภาคผนวกนั้น</p>
-    <p class="text-xs text-slate-400">The 5 appendices from the ITGR Checklist FY2025 workbook, organized by the ITGR category whose requirements reference each appendix.</p>
+    <h2 class="text-lg font-bold text-blue-800 mb-1">${t('ภาคผนวก ITGR Checklist 1-5','ITGR Checklist Appendices 1-5')}</h2>
+    <p class="text-sm text-slate-500">${t('เอกสารแนบ 5 ชุดจากไฟล์ ITGR Checklist FY2025 — จัดเรียงตามหมวดของข้อกำหนดที่อ้างอิงถึงภาคผนวกนั้น','The 5 appendices from the ITGR Checklist FY2025 workbook, organized by the ITGR category whose requirements reference each appendix.')}</p>
   </div>`;
   const cards=APPX.map(ap=>{
     const head=`<div class="flex items-start justify-between gap-3 flex-wrap mb-3">
       <div>
         <div class="text-xs text-blue-600 font-bold">Appendix ${ap.n}</div>
-        <h3 class="font-bold text-slate-800 leading-snug">${esc(ap.titleTh)}</h3>
+        <h3 class="font-bold text-slate-800 leading-snug">${esc(LANG==='th'?(ap.titleTh||ap.title):ap.title)}</h3>
       </div>
       <div class="text-right shrink-0">
-        <div class="text-[11px] px-2 py-1 rounded-lg bg-blue-50 text-blue-700 font-medium">หมวด ${ap.cat} / Category ${ap.cat}</div>
-        <div class="text-[10px] text-slate-400 mt-0.5">${esc(ap.catShortTh)} / ${esc(ap.catShort)}</div>
+        <div class="text-[11px] px-2 py-1 rounded-lg bg-blue-50 text-blue-700 font-medium">${t('หมวด','Category')} ${ap.cat}</div>
+        <div class="text-[10px] text-slate-400 mt-0.5">${esc(LANG==='th'?(ap.catShortTh||ap.catShort):ap.catShort)}</div>
       </div>
     </div>
     <div class="flex items-center gap-1.5 flex-wrap mb-3 text-[11px]">
-      <span class="text-slate-400">เชื่อมโยงข้อกำหนด / Linked requirements:</span>
-      ${ap.relatedQ.map(q=>`<button onclick="openCat(${ap.cat})" title="ดูในหมวด / View in category ${ap.cat}" class="px-2 py-0.5 rounded-full bg-slate-100 hover:bg-blue-100 text-slate-600 hover:text-blue-700">ITGR No.${q}</button>`).join('')}
+      <span class="text-slate-400">${t('เชื่อมโยงข้อกำหนด','Linked requirements')}:</span>
+      ${ap.relatedQ.map(q=>`<button onclick="openCat(${ap.cat})" title="${t('ดูในหมวด','View in category')} ${ap.cat}" class="px-2 py-0.5 rounded-full bg-slate-100 hover:bg-blue-100 text-slate-600 hover:text-blue-700">ITGR No.${q}</button>`).join('')}
     </div>`;
     return `<div class="bg-white rounded-xl border border-slate-200 p-5 mb-4">${head}${appendixBody(ap)}</div>`;
   }).join('');
   return `<section class="mt-6">${intro}${cards}
     <div class="bg-blue-50 border border-blue-100 rounded-xl p-4 text-xs text-slate-500">
-      <b>หมายเหตุ / Note:</b> เนื้อหาภาคผนวกคัดลอกจากไฟล์ต้นฉบับ ITGR Checklist FY2025 (sheet Appendix 1-5) โดยคงข้อความภาษาอังกฤษตามต้นฉบับทางการ —
-      การจับคู่กับหมวดอ้างอิงจากข้อกำหนดในไฟล์ที่ระบุชื่อภาคผนวกนั้นโดยตรง<br>
-      Appendix content is copied from the source ITGR Checklist FY2025 workbook (Appendix 1-5 sheets), keeping the official English text. Category mapping is derived from checklist requirements that explicitly reference each appendix.
+      <b>${t('หมายเหตุ','Note')}:</b> ${t('เนื้อหาในตารางภาคผนวกคงข้อความภาษาอังกฤษตามต้นฉบับทางการเสมอ (หัวตารางแปลตามภาษาที่เลือก) — คัดลอกจากไฟล์ ITGR Checklist FY2025 (sheet Appendix 1-5) การจับคู่กับหมวดอ้างอิงจากข้อกำหนดในไฟล์ที่ระบุชื่อภาคผนวกนั้นโดยตรง','Appendix table content is always kept in the official English source text (only the column headers follow the selected language). It is copied from the ITGR Checklist FY2025 workbook (Appendix 1-5 sheets); category mapping is derived from checklist requirements that explicitly reference each appendix.')}
     </div>
   </section>`;
 }
@@ -672,7 +716,7 @@ function appendixBody(ap){
       <div class="mb-3">
         <div class="text-sm font-bold text-blue-700 mb-1">${esc(sec.header)}</div>
         <div class="overflow-x-auto"><table class="w-full text-left border border-slate-200">
-        ${thd(['หมวดของระเบียบ<div class="en text-[10px]">Rule Category</div>','ข้อกำหนดที่ต้องมี<div class="en text-[10px]">Required Requirements</div>'])}
+        ${thd([t('หมวดของระเบียบ','Rule Category'),t('ข้อกำหนดที่ต้องมี','Required Requirements')])}
         <tbody>${sec.rows.map(r=>`<tr class="border-t border-slate-100 align-top">
           <td class="px-2 py-2 text-xs font-medium text-slate-700 w-1/4">${esc(r.cat)}</td>
           <td class="px-2 py-2 text-xs text-slate-600">${ml(r.req)}</td></tr>`).join('')}</tbody>
@@ -681,7 +725,7 @@ function appendixBody(ap){
   }
   if(ap.kind==='pwd'){
     return `<div class="overflow-x-auto"><table class="w-full text-left border border-slate-200">
-      ${thd(['#','หัวข้อ<div class="en text-[10px]">Setting</div>','ข้อกำหนด<div class="en text-[10px]">Requirement</div>','ระดับ<div class="en text-[10px]">Required / Recommended</div>','System Control','ข้อกำหนดทางเลือก<div class="en text-[10px]">Alternative</div>'])}
+      ${thd(['#',t('หัวข้อ','Setting'),t('ข้อกำหนด','Requirement'),t('ระดับ (บังคับ/แนะนำ)','Required / Recommended'),'System Control',t('ข้อกำหนดทางเลือก','Alternative')])}
       <tbody>${ap.data.map(r=>`<tr class="border-t border-slate-100 align-top text-xs">
         <td class="px-2 py-2 text-slate-400">${esc(r.no)}</td>
         <td class="px-2 py-2 font-medium text-slate-700">${esc(r.setting)}</td>
@@ -694,7 +738,7 @@ function appendixBody(ap){
   }
   if(ap.kind==='logs'){
     return `<div class="overflow-x-auto"><table class="w-full text-left border border-slate-200">
-      ${thd(['#','ระบบ<div class="en text-[10px]">System</div>','ระบบย่อย<div class="en text-[10px]">Equipment / Subsystem</div>','ประเภท Log<div class="en text-[10px]">Type</div>','รายการที่ต้องเก็บ<div class="en text-[10px]">Items to obtain and store</div>'])}
+      ${thd(['#',t('ระบบ','System'),t('ระบบย่อย','Equipment / Subsystem'),t('ประเภท Log','Type'),t('รายการที่ต้องเก็บ','Items to obtain and store')])}
       <tbody>${ap.data.map(r=>`<tr class="border-t border-slate-100 align-top text-xs">
         <td class="px-2 py-2 text-slate-400">${esc(r.no)}</td>
         <td class="px-2 py-2 font-medium text-slate-700">${esc(r.system)}</td>
@@ -705,7 +749,7 @@ function appendixBody(ap){
   }
   if(ap.kind==='scenario'){
     return `<div class="overflow-x-auto"><table class="w-full text-left border border-slate-200">
-      ${thd(['#','สถานการณ์<div class="en text-[10px]">Scenario</div>','แหล่ง Log<div class="en text-[10px]">Log source</div>','EDR<div class="en text-[10px]">Q79</div>','SIEM<div class="en text-[10px]">Q81</div>','Secure Storage<div class="en text-[10px]">Q92</div>','ตัวอย่างกฎการตรวจจับ<div class="en text-[10px]">Detection rule example</div>'])}
+      ${thd(['#',t('สถานการณ์','Scenario'),t('แหล่ง Log','Log source'),'EDR<div class="en text-[10px]">Q79</div>','SIEM<div class="en text-[10px]">Q81</div>','Secure Storage<div class="en text-[10px]">Q92</div>',t('ตัวอย่างกฎการตรวจจับ','Detection rule example')])}
       <tbody>${ap.data.map(r=>`<tr class="border-t border-slate-100 align-top text-xs">
         <td class="px-2 py-2 text-slate-400">${esc(r.no)}</td>
         <td class="px-2 py-2 font-medium text-slate-700">${esc(r.scenario)}</td>
@@ -718,7 +762,7 @@ function appendixBody(ap){
   }
   if(ap.kind==='assets'){
     return `<div class="overflow-x-auto"><table class="w-full text-left border border-slate-200">
-      ${thd(['No.','หมวดสารสนเทศ<div class="en text-[10px]">Category</div>','ชื่อสารสนเทศ<div class="en text-[10px]">Name of information asset</div>','ระดับชั้นความลับ<div class="en text-[10px]">Confidentiality level</div>','ระยะเวลาเก็บรักษา<div class="en text-[10px]">Retention period</div>'])}
+      ${thd(['No.',t('หมวดสารสนเทศ','Category'),t('ชื่อสารสนเทศ','Name of information asset'),t('ระดับชั้นความลับ','Confidentiality level'),t('ระยะเวลาเก็บรักษา','Retention period')])}
       <tbody>${ap.data.map(r=>`<tr class="border-t border-slate-100 align-top text-xs">
         <td class="px-2 py-2 text-slate-400">${esc(r.no)}</td>
         <td class="px-2 py-2 font-medium text-slate-700">${esc(r.cat)}</td>
@@ -745,7 +789,7 @@ async function loadAdminData(){
   }
 }
 function adminView(){
-  if(ADMIN_LOADING) return `<div class="mt-6 text-sm text-slate-400">กำลังโหลด... / Loading...</div>`;
+  if(ADMIN_LOADING) return `<div class="mt-6 text-sm text-slate-400">${t('กำลังโหลด...','Loading...')}</div>`;
   const roleOpt=(sel)=>['admin','user','reviewer','approver','read_only'].map(r=>`<option value="${r}" ${sel===r?'selected':''}>${r}</option>`).join('');
   const userRows=ADMIN_USERS.map(u=>`
     <tr class="border-t border-slate-100 text-sm">
@@ -770,12 +814,12 @@ function adminView(){
     </tr>`).join('');
   return `<section class="mt-6 space-y-6">
     <div class="bg-white rounded-xl border border-slate-200 p-5">
-      <h2 class="text-lg font-bold text-blue-800 mb-3">จัดการผู้ใช้ <span class="en text-base">/ User Management</span></h2>
+      <h2 class="text-lg font-bold text-blue-800 mb-3">${t('จัดการผู้ใช้','User Management')}</h2>
       <form onsubmit="adminCreateUser(event)" class="flex flex-wrap gap-2 items-end mb-4 pb-4 border-b border-slate-100">
-        <div><label class="text-xs text-slate-500 block">ชื่อ / Name</label><input name="display_name" required class="text-sm border border-slate-300 rounded-lg px-2 py-1.5"></div>
+        <div><label class="text-xs text-slate-500 block">${t('ชื่อ','Name')}</label><input name="display_name" required class="text-sm border border-slate-300 rounded-lg px-2 py-1.5"></div>
         <div><label class="text-xs text-slate-500 block">PIN (4-8 digits)</label><input name="pin" required pattern="\\d{4,8}" class="text-sm border border-slate-300 rounded-lg px-2 py-1.5 w-28"></div>
         <div><label class="text-xs text-slate-500 block">Role</label><select name="role" class="text-sm border border-slate-300 rounded-lg px-2 py-1.5">${roleOpt('read_only')}</select></div>
-        <button class="text-sm px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white">+ Add user</button>
+        <button class="text-sm px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white">+ ${t('เพิ่มผู้ใช้','Add user')}</button>
       </form>
       <div class="overflow-x-auto"><table class="w-full text-left">
         <thead><tr class="bg-slate-50 text-xs text-slate-500"><th class="px-3 py-2">Name</th><th class="px-3 py-2">Role</th><th class="px-3 py-2 text-center">Status</th><th class="px-3 py-2">Actions</th></tr></thead>
@@ -783,7 +827,7 @@ function adminView(){
       </table></div>
     </div>
     <div class="bg-white rounded-xl border border-slate-200 p-5">
-      <h2 class="text-lg font-bold text-blue-800 mb-3">บันทึกการเปลี่ยนแปลง <span class="en text-base">/ Audit Log</span> <span class="text-xs text-slate-400 font-normal">(last 50)</span></h2>
+      <h2 class="text-lg font-bold text-blue-800 mb-3">${t('บันทึกการเปลี่ยนแปลง','Audit Log')} <span class="text-xs text-slate-400 font-normal">(${t('50 รายการล่าสุด','last 50')})</span></h2>
       <div class="overflow-x-auto"><table class="w-full text-left">
         <thead><tr class="bg-slate-50 text-xs text-slate-500"><th class="px-3 py-2">Time</th><th class="px-3 py-2">User</th><th class="px-3 py-2">Item</th><th class="px-3 py-2">Field</th><th class="px-3 py-2">Old</th><th class="px-3 py-2">New</th></tr></thead>
         <tbody>${auditRows||'<tr><td colspan="6" class="px-3 py-6 text-center text-slate-400 text-sm">No changes yet</td></tr>'}</tbody>
@@ -827,7 +871,7 @@ async function setField(n,k,v){
     await fetchJSON('/api/items/'+n, { method:'PATCH', body:{ [FIELD_API_KEY[k]||k]: v } });
   }catch(err){
     STATE[n]=prev; render();
-    alert('บันทึกไม่สำเร็จ / Failed to save: '+err.message);
+    alert(t('บันทึกไม่สำเร็จ: ','Failed to save: ')+err.message);
   }
 }
 function clearFilters(){ FILTERS={cat:"",risk:"",pri:"",status:"",type:"",q:""}; render(); }
@@ -858,7 +902,7 @@ async function logout(){
 
 async function init(){
   const app=document.getElementById('app');
-  app.innerHTML = '<div class="min-h-screen flex items-center justify-center text-slate-400 text-sm">กำลังโหลด... / Loading...</div>';
+  app.innerHTML = '<div class="min-h-screen flex items-center justify-center text-slate-400 text-sm">'+t('กำลังโหลด...','Loading...')+'</div>';
   try{
     ME = await fetchJSON('/api/me');
   }catch(e){

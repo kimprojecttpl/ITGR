@@ -21,13 +21,33 @@ export default async function handler(req, res) {
   }
 
   const items = data.map((row) => {
-    const { item_status, cat_no, cat_short, cat_short_th, ...item } = row;
+    const {
+      item_status,
+      cat_no,
+      cat_short,
+      cat_short_th,
+      category_th,
+      name_th,
+      content_th,
+      standard_th,
+      evidence_th,
+      qtype_th,
+      ...item
+    } = row;
     const status = Array.isArray(item_status) ? item_status[0] : item_status;
     return {
       ...item,
       catNo: cat_no,
       catShort: cat_short,
       catShortTh: cat_short_th,
+      // v1.5 — Thai content for the TH/EN toggle. Empty string means "not
+      // translated"; the client falls back to the English field.
+      categoryTh: category_th ?? "",
+      nameTh: name_th ?? "",
+      contentTh: content_th ?? "",
+      standardTh: standard_th ?? "",
+      evidenceTh: evidence_th ?? "",
+      qtypeTh: qtype_th ?? "",
       status: status?.status ?? "Not Started",
       owner: status?.owner ?? "",
       note: status?.note ?? "",

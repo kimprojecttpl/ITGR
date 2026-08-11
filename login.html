@@ -21,21 +21,42 @@
     <p class="text-blue-100 text-sm">AutoCorp (ATC) · ITGR Checklist FY2025</p>
   </div>
   <div class="bg-white rounded-2xl shadow-xl p-6">
-    <h2 class="text-center font-bold text-slate-700 mb-1">เข้าสู่ระบบด้วย PIN <span class="en text-sm">/ Sign in with PIN</span></h2>
-    <p class="text-center text-xs text-slate-400 mb-5">กรอกรหัส PIN ของคุณ / Enter your PIN</p>
+    <div class="flex justify-center mb-3"><div id="langToggle" class="inline-flex items-center gap-0.5 p-0.5 rounded-lg bg-slate-100" role="group"></div></div>
+    <h2 id="titleText" class="text-center font-bold text-slate-700 mb-1"></h2>
+    <p id="subText" class="text-center text-xs text-slate-400 mb-5"></p>
     <form id="loginForm">
       <input id="pinInput" type="password" inputmode="numeric" autocomplete="off" maxlength="8"
         class="sr-only" autofocus>
       <div id="dots" class="flex justify-center gap-2 mb-4"></div>
       <div id="errorMsg" class="hidden text-center text-sm text-red-600 mb-3"></div>
-      <button type="submit" class="w-full bg-blue-700 hover:bg-blue-800 text-white text-sm font-medium rounded-xl py-2.5 transition">
-        เข้าสู่ระบบ / Sign in
-      </button>
+      <button id="submitBtn" type="submit" class="w-full bg-blue-700 hover:bg-blue-800 text-white text-sm font-medium rounded-xl py-2.5 transition"></button>
     </form>
   </div>
-  <p class="text-center text-blue-100 text-xs mt-4">หากไม่มี PIN กรุณาติดต่อผู้ดูแลระบบ / If you don't have a PIN, contact your admin</p>
+  <p id="helpText" class="text-center text-blue-100 text-xs mt-4"></p>
 </div>
 <script>
+// Language is chosen on the login screen and carried into the dashboard
+// through the same localStorage key the dashboard reads.
+let LANG = 'th';
+try { const saved = localStorage.getItem('itgr_lang'); if(saved==='th'||saved==='en') LANG = saved; } catch(e){}
+function t(th,en){ return LANG==='th' ? th : en; }
+function setLang(l){
+  LANG = l;
+  try{ localStorage.setItem('itgr_lang', l); }catch(e){}
+  document.documentElement.lang = l;
+  paint();
+}
+function paint(){
+  document.getElementById('langToggle').innerHTML = ['th','en'].map(code=>
+    `<button type="button" onclick="setLang('${code}')" aria-pressed="${LANG===code}" class="px-2.5 py-1 text-xs font-medium rounded-md transition ${LANG===code?'bg-white text-blue-700 shadow-sm':'text-slate-500 hover:bg-white/60'}">${code==='th'?'ไทย':'EN'}</button>`
+  ).join('');
+  document.getElementById('titleText').textContent = t('เข้าสู่ระบบด้วย PIN','Sign in with PIN');
+  document.getElementById('subText').textContent   = t('กรอกรหัส PIN ของคุณ','Enter your PIN');
+  document.getElementById('submitBtn').textContent = t('เข้าสู่ระบบ','Sign in');
+  document.getElementById('helpText').textContent  = t('หากไม่มี PIN กรุณาติดต่อผู้ดูแลระบบ',"If you don't have a PIN, contact your admin");
+  document.title = t('เข้าสู่ระบบ — IT Governance Dashboard | AutoCorp','Sign in — IT Governance Dashboard | AutoCorp');
+}
+
 const pinInput = document.getElementById('pinInput');
 const dots = document.getElementById('dots');
 const errorMsg = document.getElementById('errorMsg');
@@ -52,6 +73,7 @@ pinInput.addEventListener('input', ()=>{
   renderDots();
 });
 document.body.addEventListener('click', ()=> pinInput.focus());
+paint();
 renderDots();
 pinInput.focus();
 
@@ -59,7 +81,7 @@ form.addEventListener('submit', async (e)=>{
   e.preventDefault();
   errorMsg.classList.add('hidden');
   const pin = pinInput.value;
-  if(pin.length < 4){ showError('กรุณากรอก PIN อย่างน้อย 4 หลัก / PIN must be at least 4 digits'); return; }
+  if(pin.length < 4){ showError(t('กรุณากรอก PIN อย่างน้อย 4 หลัก','PIN must be at least 4 digits')); return; }
   try{
     const res = await fetch('/api/auth/login', {
       method: 'POST',
@@ -68,10 +90,10 @@ form.addEventListener('submit', async (e)=>{
       credentials: 'same-origin'
     });
     const data = await res.json().catch(()=>({}));
-    if(!res.ok){ showError(data.error || 'เข้าสู่ระบบไม่สำเร็จ / Sign in failed'); pinInput.value=''; renderDots(); return; }
+    if(!res.ok){ showError(data.error || t('เข้าสู่ระบบไม่สำเร็จ','Sign in failed')); pinInput.value=''; renderDots(); return; }
     window.location.href = 'index.html';
   }catch(err){
-    showError('เชื่อมต่อไม่สำเร็จ / Connection failed');
+    showError(t('เชื่อมต่อไม่สำเร็จ','Connection failed'));
   }
 });
 function showError(msg){
