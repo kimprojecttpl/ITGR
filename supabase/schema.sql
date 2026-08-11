@@ -205,3 +205,22 @@ create index if not exists item_workflow_events_item_no_idx on item_workflow_eve
 alter table item_evidence_files  enable row level security;
 alter table item_workflow_events enable row level security;
 -- Same default-deny posture as every other table — service role (BFF) only.
+
+-- =============================================================================
+-- v1.5: Thai translations for the checklist content, enabling the TH/EN
+-- language toggle in the dashboard.
+--
+-- Appended (not editing the original CREATE TABLE above) per CLAUDE.md's
+-- migration convention — safe to re-run.
+--
+-- Design note: the English columns stay the source of truth. `*_th` holds a
+-- translation that may be empty; the UI falls back to the English column
+-- whenever a `*_th` value is blank, so a partial translation never blanks out
+-- the screen. `cat_short_th` already existed since v1.0 and is unchanged.
+-- =============================================================================
+alter table checklist_items add column if not exists category_th text not null default '';
+alter table checklist_items add column if not exists name_th     text not null default '';
+alter table checklist_items add column if not exists content_th  text not null default '';
+alter table checklist_items add column if not exists standard_th text not null default '';
+alter table checklist_items add column if not exists evidence_th text not null default '';
+alter table checklist_items add column if not exists qtype_th    text not null default '';
