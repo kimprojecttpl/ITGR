@@ -788,19 +788,28 @@ function appendixBody(ap){
 }
 
 // ---------- ADMIN ----------
-let ADMIN_USERS = [], ADMIN_AUDIT = [], ADMIN_LOADING = false;
+let ADMIN_USERS = [], ADMIN_AUDIT = [], ADMIN_TOKENS = [], ADMIN_LOADING = false;
 async function loadAdminData(){
   ADMIN_LOADING = true;
   try{
-    const [u,a] = await Promise.all([
+    const [u,a,tk] = await Promise.all([
       fetchJSON('/api/admin/users'),
-      fetchJSON('/api/admin/audit-log?limit=50')
+      fetchJSON('/api/admin/audit-log?limit=50'),
+      fetchJSON('/api/admin/tokens')
     ]);
-    ADMIN_USERS = u.users; ADMIN_AUDIT = a.entries;
+    ADMIN_USERS = u.users; ADMIN_AUDIT = a.entries; ADMIN_TOKENS = tk.tokens;
   } finally {
     ADMIN_LOADING = false; render();
   }
 }
+// v1.6 — scopes an External Read API token can carry. history:read is
+// deliberately not pre-checked by default (decision D3): workflow comments
+// can name people and describe issues plainly.
+const API_SCOPE_LABELS = {
+  'items:read': 'items:read — อ่านรายการและรายละเอียดข้อกำหนด',
+  'summary:read': 'summary:read — อ่านตัวเลขสรุป/ความคืบหน้า',
+  'history:read': 'history:read — อ่านความเห็นและไทม์ไลน์ workflow',
+};
 function adminView(){
   if(ADMIN_LOADING) return `<div class="mt-6 text-sm text-slate-400">${t('กำลังโหลด...','Loading...')}</div>`;
   const roleOpt=(sel)=>['admin','user','reviewer','approver','read_only'].map(r=>`<option value="${r}" ${sel===r?'selected':''}>${r}</option>`).join('');
@@ -846,7 +855,76 @@ function adminView(){
         <tbody>${auditRows||'<tr><td colspan="6" class="px-3 py-6 text-center text-slate-400 text-sm">No changes yet</td></tr>'}</tbody>
       </table></div>
     </div>
+    ${apiTokensSection()}
   </section>`;
+}
+// v1.6 — External Read API token management. See docs/PRD-external-api.md.
+function apiTokensSection(){
+  const scopeCheckboxes=(checked)=>Object.keys(API_SCOPE_LABELS).map(s=>
+    `<label class="flex items-center gap-1.5 text-xs text-slate-600 font-normal"><input type="checkbox" name="scope" value="${s}" ${checked.includes(s)?'checked':''}> ${esc(API_SCOPE_LABELS[s])}</label>`
+  ).join('');
+  const rows=ADMIN_TOKENS.map(tk=>`
+    <tr class="border-t border-slate-100 text-sm align-top">
+      <td class="px-3 py-2">
+        <div class="font-medium text-slate-700">${esc(tk.name)}</div>
+        <div class="text-[10px] text-slate-400 font-mono">${esc(tk.prefix)}…</div>
+      </td>
+      <td class="px-3 py-2 text-xs text-slate-500">${tk.scopes.map(s=>`<span class="inline-block px-1.5 py-0.5 rounded bg-slate-100 mr-1 mb-1">${esc(s)}</span>`).join('')}</td>
+      <td class="px-3 py-2 text-xs text-slate-400 whitespace-nowrap">${tk.last_used_at?new Date(tk.last_used_at).toLocaleString():t('ยังไม่เคยใช้','never used')}</td>
+      <td class="px-3 py-2 text-xs text-slate-400 whitespace-nowrap">${tk.expires_at?new Date(tk.expires_at).toLocaleDateString():t('ไม่หมดอายุ','never expires')}</td>
+      <td class="px-3 py-2 text-center">
+        <button onclick="adminToggleToken('${tk.id}',${!tk.active})" class="text-xs px-2 py-1 rounded-lg ${tk.active?'bg-green-100 text-green-700':'bg-slate-200 text-slate-500'}">${tk.active?t('ใช้งานอยู่','Active'):t('เพิกถอนแล้ว','Revoked')}</button>
+      </td>
+      <td class="px-3 py-2">
+        <button onclick="adminDeleteToken('${tk.id}','${esc(tk.name)}')" class="text-xs text-red-600 hover:underline">${t('ลบ','Delete')}</button>
+      </td>
+    </tr>`).join('');
+  return `<div class="bg-white rounded-xl border border-slate-200 p-5">
+    <h2 class="text-lg font-bold text-blue-800 mb-1">${t('External Read API — Token','External Read API — Tokens')}</h2>
+    <p class="text-xs text-slate-400 mb-3">${t('ออก token ให้ระบบภายนอก (n8n, LINE bot, Claude ฯลฯ) อ่านสถานะ ITGR ผ่าน /api/v1/* — อ่านอย่างเดียวเสมอ ไม่มีสิทธิ์เขียน token ไม่หมดอายุเองจนกว่าจะกำหนดวันไว้ ให้เฝ้าดูคอลัมน์ "ใช้ล่าสุด" เพื่อลบใบที่เลิกใช้','Issue tokens for external systems (n8n, LINE bot, Claude, etc.) to read ITGR status via /api/v1/* — always read-only, never write. Tokens do not expire unless you set a date, so watch the "last used" column and delete anything that has gone quiet.')}</p>
+    <form onsubmit="adminCreateToken(event)" class="flex flex-wrap gap-4 items-end mb-4 pb-4 border-b border-slate-100">
+      <div><label class="text-xs text-slate-500 block">${t('ชื่อ (ระบุว่าใครใช้)','Name (who/what uses this)')}</label><input name="token_name" required placeholder="n8n morning brief" class="text-sm border border-slate-300 rounded-lg px-2 py-1.5"></div>
+      <div class="flex flex-col gap-1">${scopeCheckboxes(['items:read','summary:read'])}</div>
+      <div><label class="text-xs text-slate-500 block">${t('วันหมดอายุ (ไม่จำเป็น)','Expires (optional)')}</label><input name="expires_at" type="date" class="text-sm border border-slate-300 rounded-lg px-2 py-1.5"></div>
+      <button class="text-sm px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white">+ ${t('ออก Token','Issue token')}</button>
+    </form>
+    <div class="overflow-x-auto"><table class="w-full text-left">
+      <thead><tr class="bg-slate-50 text-xs text-slate-500">
+        <th class="px-3 py-2">${t('ชื่อ','Name')}</th><th class="px-3 py-2">Scopes</th>
+        <th class="px-3 py-2">${t('ใช้ล่าสุด','Last used')}</th><th class="px-3 py-2">${t('หมดอายุ','Expires')}</th>
+        <th class="px-3 py-2 text-center">${t('สถานะ','Status')}</th><th class="px-3 py-2">${t('จัดการ','Actions')}</th>
+      </tr></thead>
+      <tbody>${rows||`<tr><td colspan="6" class="px-3 py-6 text-center text-slate-400 text-sm">${t('ยังไม่มี token','No tokens yet')}</td></tr>`}</tbody>
+    </table></div>
+  </div>`;
+}
+async function adminCreateToken(e){
+  e.preventDefault();
+  const f=e.target;
+  const scopes=Array.from(f.querySelectorAll('input[name="scope"]:checked')).map(i=>i.value);
+  if(!scopes.length){ alert(t('ต้องเลือกอย่างน้อย 1 scope','Select at least one scope')); return; }
+  const body={ name:f.token_name.value, scopes, expires_at: f.expires_at.value || null };
+  try{
+    const res=await fetchJSON('/api/admin/tokens',{method:'POST',body});
+    f.reset();
+    await loadAdminData();
+    // The raw value is returned exactly once and can never be recovered —
+    // shown via alert() to match this dashboard's existing lightweight
+    // interaction style (see adminResetPin), not a design choice unique to
+    // this feature.
+    alert(t(
+      'สร้าง token สำเร็จ — คัดลอกไว้ตอนนี้เลย จะไม่แสดงค่านี้อีก:\n\n','Token created — copy it now, it will not be shown again:\n\n'
+    )+res.token);
+  }catch(err){ alert(err.message); }
+}
+async function adminToggleToken(id,active){
+  try{ await fetchJSON('/api/admin/tokens/'+id,{method:'PATCH',body:{active}}); await loadAdminData(); }
+  catch(err){ alert(err.message); }
+}
+async function adminDeleteToken(id,name){
+  if(!confirm(t('ลบ token "','Delete token "')+name+t('"? นำกลับมาไม่ได้','"? This cannot be undone.'))) return;
+  try{ await fetchJSON('/api/admin/tokens/'+id,{method:'DELETE'}); await loadAdminData(); }
+  catch(err){ alert(err.message); }
 }
 async function adminCreateUser(e){
   e.preventDefault();
