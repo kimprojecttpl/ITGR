@@ -880,7 +880,10 @@ function apiTokensSection(){
       </td>
     </tr>`).join('');
   return `<div class="bg-white rounded-xl border border-slate-200 p-5">
-    <h2 class="text-lg font-bold text-blue-800 mb-1">${t('External Read API — Token','External Read API — Tokens')}</h2>
+    <div class="flex items-start justify-between gap-3 flex-wrap mb-1">
+      <h2 class="text-lg font-bold text-blue-800">${t('External Read API — Token','External Read API — Tokens')}</h2>
+      <a href="api-docs.html" target="_blank" class="text-xs px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium whitespace-nowrap">\u{1F4D8} ${t('เอกสารการใช้งาน API','API documentation')}</a>
+    </div>
     <p class="text-xs text-slate-400 mb-3">${t('ออก token ให้ระบบภายนอก (n8n, LINE bot, Claude ฯลฯ) อ่านสถานะ ITGR ผ่าน /api/v1/* — อ่านอย่างเดียวเสมอ ไม่มีสิทธิ์เขียน token ไม่หมดอายุเองจนกว่าจะกำหนดวันไว้ ให้เฝ้าดูคอลัมน์ "ใช้ล่าสุด" เพื่อลบใบที่เลิกใช้','Issue tokens for external systems (n8n, LINE bot, Claude, etc.) to read ITGR status via /api/v1/* — always read-only, never write. Tokens do not expire unless you set a date, so watch the "last used" column and delete anything that has gone quiet.')}</p>
     <form onsubmit="adminCreateToken(event)" class="flex flex-wrap gap-4 items-end mb-4 pb-4 border-b border-slate-100">
       <div><label class="text-xs text-slate-500 block">${t('ชื่อ (ระบุว่าใครใช้)','Name (who/what uses this)')}</label><input name="token_name" required placeholder="n8n morning brief" class="text-sm border border-slate-300 rounded-lg px-2 py-1.5"></div>
