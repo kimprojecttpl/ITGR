@@ -18,6 +18,7 @@ Copy [`.env.example`](.env.example) → `.env` for local scripts, and set the sa
 
 - `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
 - `JWT_SECRET`, `PIN_PEPPER` — generate each with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
+- `API_TOKEN_PEPPER` — same generation command, but a *separate* value from `PIN_PEPPER`. Only needed once you start issuing External Read API tokens (see below); leave any placeholder value until then.
 
 ### 3. Seed data + create the first admin
 
@@ -36,6 +37,20 @@ npm run create-user -- "Your Name" 4821 admin                 # bootstrap the fi
 3. Deploy
 
 Unauthenticated visits to `index.html` redirect to `login.html`. Users sign in with a PIN issued by an admin (see Section 3).
+
+## 🔌 External Read API (`/api/v1/*`)
+
+A separate, bearer-token-authenticated, **read-only** API for external systems (n8n, a LINE bot, Claude, etc.) to query checklist status without a PIN login. See [docs/PRD-external-api.md](docs/PRD-external-api.md) for the full spec and design rationale.
+
+1. Add `API_TOKEN_PEPPER` (distinct from `PIN_PEPPER`) to `.env` and to Vercel's environment variables.
+2. Issue a token from the **Admin** tab → *External Read API — Tokens*. The raw token value is shown exactly once — copy it immediately.
+3. Call the API with `Authorization: Bearer <token>`:
+   ```bash
+   curl -H "Authorization: Bearer itgr_live_..." https://<your-deployment>/api/v1/meta
+   ```
+   Start at `/api/v1/meta` — it documents every filter, enum, and endpoint, plus worked examples pairing a plain-language question with the request that answers it.
+
+Every token carries scopes (`items:read`, `summary:read`, `history:read`); a new token defaults to `items:read` + `summary:read` — `history:read` (workflow comments) must be granted explicitly. Tokens do not expire unless you set a date when issuing them, so the Admin tab shows each token's last-used time — revoke or delete anything that's gone quiet.
 
 ## 📁 Structure
 

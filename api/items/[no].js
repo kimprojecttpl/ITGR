@@ -1,8 +1,7 @@
 import { getSupabase } from "../../lib/supabase.js";
 import { requireAnyRole } from "../../lib/auth.js";
 import { TERMINAL_STATES } from "../../lib/workflow.js";
-
-const VALID_STATUSES = ["Not Started", "In Progress", "Compliant", "Partial", "Not Compliant"];
+import { STATUSES as VALID_STATUSES } from "../../lib/checklistEnums.js";
 // Owner/Evidence(note) are locked once an item reaches a terminal decision
 // (v1.4 — reopen via "Request for Approval" instead). ClickUp is exempt —
 // it's a reference to external work, not compliance evidence, and stays
