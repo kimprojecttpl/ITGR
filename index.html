@@ -25,13 +25,23 @@ const RISK_ORDER = ["Very High","High","Middle","Low"];
 const RISK_TH = {"Very High":"สูงมาก","High":"สูง","Middle":"ปานกลาง","Low":"ต่ำ","":"-"};
 const RISK_COLOR = {"Very High":"#dc2626","High":"#ea580c","Middle":"#d97706","Low":"#0ea5e9","":"#94a3b8"};
 const RISK_BG = {"Very High":"bg-red-100 text-red-700","High":"bg-orange-100 text-orange-700","Middle":"bg-amber-100 text-amber-700","Low":"bg-sky-100 text-sky-700","":"bg-slate-100 text-slate-500"};
-// v1.3: "Not Applicable" is retired — the value is repurposed to mean
-// "Not Compliant" (Approver's NC decision), per stakeholder decision in
-// PRD.md. It no longer gets full credit in progressPct() below.
-const STATUSES = ["Not Started","In Progress","Compliant","Partial","Not Compliant"];
-const STATUS_TH = {"Not Started":"ยังไม่เริ่ม","In Progress":"กำลังดำเนินการ","Compliant":"สอดคล้อง","Partial":"สอดคล้องบางส่วน (มีเงื่อนไข)","Not Compliant":"ไม่ผ่าน"};
-const STATUS_COLOR = {"Not Started":"#94a3b8","In Progress":"#2563eb","Compliant":"#16a34a","Partial":"#d97706","Not Compliant":"#dc2626"};
-const STATUS_BG = {"Not Started":"bg-slate-100 text-slate-600","In Progress":"bg-blue-100 text-blue-700","Compliant":"bg-green-100 text-green-700","Partial":"bg-amber-100 text-amber-700","Not Compliant":"bg-red-100 text-red-700"};
+// v1.5: "Not Applicable" is back as a sixth, distinct status. v1.3 had merged
+// it into "Not Compliant", but the FY2026 workbook uses N/A for 8 requirements
+// and Marubeni's scoring EXCLUDES those from the denominator rather than
+// counting them as failures — merging the two understates the result.
+const STATUSES = ["Not Started","In Progress","Compliant","Partial","Not Compliant","Not Applicable"];
+const STATUS_TH = {"Not Started":"ยังไม่เริ่ม","In Progress":"กำลังดำเนินการ","Compliant":"สอดคล้อง","Partial":"สอดคล้องบางส่วน (มีเงื่อนไข)","Not Compliant":"ไม่ผ่าน","Not Applicable":"ไม่เกี่ยวข้อง"};
+const STATUS_COLOR = {"Not Started":"#94a3b8","In Progress":"#2563eb","Compliant":"#16a34a","Partial":"#d97706","Not Compliant":"#dc2626","Not Applicable":"#64748b"};
+const STATUS_BG = {"Not Started":"bg-slate-100 text-slate-600","In Progress":"bg-blue-100 text-blue-700","Compliant":"bg-green-100 text-green-700","Partial":"bg-amber-100 text-amber-700","Not Compliant":"bg-red-100 text-red-700","Not Applicable":"bg-slate-200 text-slate-600"};
+
+// Marubeni's official scoring (FY2026 "Assessment Calculation" sheet).
+// Each requirement is weighted by its risk rating — Low-risk requirements
+// carry ZERO weight on both sides of the fraction, so implementing them
+// cannot move the official score at all.
+const RISK_WEIGHT = {"Very High":7,"High":5,"Middle":3,"Low":0,"":0};
+const GRADE_SCORE = {A:5,B:4,C:3,D:2,E:0};
+const SELF_TH = {"〇":"ดำเนินการแล้ว / Implemented","×":"ยังไม่ดำเนินการ / Not implemented","-":"ไม่เกี่ยวข้อง / Not applicable"};
+const SELF_BG = {"〇":"bg-green-100 text-green-700","×":"bg-red-100 text-red-700","-":"bg-slate-200 text-slate-600"};
 
 // Workflow state (v1.3) — more granular than `status`; drives which
 // action buttons the Tracker shows. `status` above stays the simple
@@ -113,21 +123,56 @@ function radarChart(items,size){
   return '<svg width="'+size+'" height="'+size+'" viewBox="0 0 '+size+' '+size+'">'+rings+axes+dataPoly+dots+tickLabels+'</svg>';
 }
 function statusCounts(filterFn){
-  const c={"Not Started":0,"In Progress":0,"Compliant":0,"Partial":0,"Not Compliant":0};
+  const c={};
+  STATUSES.forEach(s=>c[s]=0);
   ITEMS.filter(filterFn||(()=>true)).forEach(it=>{
-    const st=(STATE[it.no]&&STATE[it.no].status)||"Not Started"; c[st]++;
+    const st=(STATE[it.no]&&STATE[it.no].status)||"Not Started";
+    if(c[st]===undefined) c[st]=0;
+    c[st]++;
   });
   return c;
 }
 function progressPct(filterFn){
   const arr=ITEMS.filter(filterFn||(()=>true));
-  if(!arr.length) return 0;
-  let done=0;
-  // Only Compliant counts full and Partial counts half — "Not Compliant"
-  // (formerly "Not Applicable") must NOT get credit here, or a failed
-  // item would silently inflate the compliance percentage.
-  arr.forEach(it=>{ const st=(STATE[it.no]&&STATE[it.no].status); if(st==="Compliant") done++; else if(st==="Partial") done+=0.5; });
-  return Math.round(done/arr.length*100);
+  let done=0, total=0;
+  arr.forEach(it=>{
+    const st=(STATE[it.no]&&STATE[it.no].status);
+    // "Not Applicable" leaves the denominator entirely, matching how Marubeni
+    // scores it. "Not Compliant" stays in the denominator with zero credit —
+    // a failed requirement must never inflate the percentage.
+    if(st==="Not Applicable") return;
+    total++;
+    if(st==="Compliant") done++; else if(st==="Partial") done+=0.5;
+  });
+  if(!total) return 0;
+  return Math.round(done/total*100);
+}
+
+// ---------- Marubeni official score (v1.5) ----------
+// Computed from the workbook self-assessment (〇/×/−), NOT from the
+// workflow-driven `status` — so it reproduces exactly what the auditor
+// calculates, independent of how far our own approval workflow has got.
+function officialScore(filterFn){
+  let num=0, den=0, impl=0, rel=0, na=0, answered=0;
+  ITEMS.filter(filterFn||(()=>true)).forEach(it=>{
+    const a=(STATE[it.no]&&STATE[it.no].selfAssessment)||"";
+    if(!a) return;
+    answered++;
+    if(a==="-"){ na++; return; }           // excluded from both sides
+    const w=RISK_WEIGHT[it.risk]||0;
+    den+=w; rel++;
+    if(a==="〇"){ num+=w; impl++; }
+  });
+  const pct = den ? Math.round(num/den*1000)/10 : null;
+  return {num,den,pct,impl,rel,na,answered,grade: pct===null?null:gradeFor(pct)};
+}
+function hasSelfAssessment(){ return ITEMS.some(it=>(STATE[it.no]&&STATE[it.no].selfAssessment)); }
+function officialOverall(){
+  if(!CATS.length) return null;
+  const per=CATS.map(c=>officialScore(i=>i.catNo===c.no));
+  const mean=per.reduce((s,p)=>s+(p.grade?GRADE_SCORE[p.grade]:0),0)/CATS.length;
+  const grade = mean>=4.4?'A':mean>=3.4?'B':mean>=2.4?'C':mean>=1.4?'D':'E';
+  return {mean:Math.round(mean*100)/100, grade, per};
 }
 
 let TAB="overview", FILTERS={cat:"",risk:"",pri:"",status:"",type:"",q:""}, EXPANDED={};
@@ -264,9 +309,54 @@ function overview(){
         ${catBars}
       </div>
     </div>
+    ${officialSection()}
     ${priorityGradeSection(pct)}
     ${radarSection()}
   </section>`;
+}
+// ---------- Marubeni official assessment (v1.5) ----------
+function officialSection(){
+  if(!hasSelfAssessment()) return '';
+  const ov=officialOverall();
+  const rows=CATS.map((c,idx)=>{
+    const s=ov.per[idx];
+    const pct=s.pct===null?'—':s.pct.toFixed(1)+'%';
+    return `<tr class="border-t border-slate-100">
+      <td class="px-2 py-1.5 text-xs text-slate-600">${c.no}. ${esc(c.shortTh)} <span class="en">/ ${esc(c.short)}</span></td>
+      <td class="px-2 py-1.5 text-center text-xs text-slate-500">${s.impl}/${s.rel}</td>
+      <td class="px-2 py-1.5 text-center text-xs text-slate-500">${s.num}/${s.den}</td>
+      <td class="px-2 py-1.5 text-right text-xs font-medium text-slate-700">${pct}</td>
+      <td class="px-2 py-1.5 text-center">${s.grade?`<b class="text-xs px-1.5 py-0.5 rounded ${GRADE_BG[s.grade]}">${s.grade}</b>`:'<span class="text-slate-300">—</span>'}</td>
+    </tr>`;
+  }).join('');
+  const totals=officialScore();
+  return `<div class="bg-white rounded-xl border border-slate-200 p-5 mt-4">
+    <h3 class="font-bold text-slate-700 mb-1 text-sm">${H("ผลประเมินตามเกณฑ์ทางการของ Marubeni","Marubeni Official Assessment")}</h3>
+    <p class="text-[11px] text-slate-400 mb-3">คำนวณจากผลประเมินตนเองในไฟล์ ITGR (〇/×/−) ถ่วงน้ำหนักตามความเสี่ยง — สูงมาก 7 · สูง 5 · ปานกลาง 3 · ต่ำ 0 · ข้อที่ "ไม่เกี่ยวข้อง" ถูกตัดออกจากการคำนวณ
+      <span class="en block">/ From the workbook self-assessment, risk-weighted (Very High 7 · High 5 · Middle 3 · Low 0); Not-applicable items are excluded entirely. This mirrors Marubeni's own formula, separate from the approval workflow's status.</span></p>
+    <div class="flex flex-wrap gap-4 items-start">
+      <div class="flex items-center gap-4 border border-slate-100 rounded-lg p-3 shrink-0">
+        <div class="w-16 h-16 rounded-full flex items-center justify-center text-3xl font-bold text-white shrink-0" style="background:${GRADE_COLOR[ov.grade]}">${ov.grade}</div>
+        <div>
+          <div class="text-xs text-slate-400 leading-tight">เกรดทางการ <span class="en block">/ Official rating</span></div>
+          <div class="text-lg font-bold text-slate-700">${ov.mean.toFixed(1)} <span class="text-xs font-normal text-slate-400">/ 5.0</span></div>
+          <div class="text-[11px] text-slate-400">${totals.impl}/${totals.rel} ข้อ · ${totals.na} ไม่เกี่ยวข้อง</div>
+        </div>
+      </div>
+      <div class="flex-1 min-w-[320px] overflow-x-auto">
+        <table class="w-full text-left">
+          <thead><tr class="text-[10px] text-slate-400 uppercase tracking-wide">
+            <th class="px-2 py-1 font-medium">หมวด / Category</th>
+            <th class="px-2 py-1 text-center font-medium">ข้อ</th>
+            <th class="px-2 py-1 text-center font-medium">น้ำหนัก</th>
+            <th class="px-2 py-1 text-right font-medium">%</th>
+            <th class="px-2 py-1 text-center font-medium">เกรด</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>
+  </div>`;
 }
 function priorityGradeSection(overallPct){
   const overallGrade=gradeFor(overallPct);
@@ -405,6 +495,7 @@ function tracker(){
           <div><label class="text-xs font-bold text-slate-500">งาน ClickUp <span class="en">/ Task (ClickUp)</span></label>${clickupField}</div>
         </div>
         ${locked&&editable?'<div class="text-[11px] text-amber-600 mt-2">\u{1F512} รายการนี้อนุมัติแล้ว — แก้ไข Owner/Evidence ไม่ได้จนกว่าจะกด "ส่งขออนุมัติใหม่" ด้านล่าง / This item is decided — Owner/Evidence are locked until you click "Request for Approval" below.</div>':''}
+        ${selfAssessmentPanel(it.no)}
         ${workflowPanel(it,wf)}
         <div class="mt-3 pt-3 border-t border-slate-200">
           <button onclick="toggleHistory(${it.no})" class="text-xs text-blue-600 hover:underline">${EXPANDED_HISTORY[it.no]?'ซ่อนประวัติ / Hide history':'\u{1F553} ดูประวัติ / View history'}</button>
@@ -445,6 +536,24 @@ function tracker(){
       </table>
     </div>
   </section>`;
+}
+
+// ---------- SELF-ASSESSMENT (v1.5) ----------
+// Read-only record of what was answered in the ITGR workbook. Deliberately
+// separate from the workflow fields above: this is what AutoCorp reported to
+// Marubeni, not what our own Reviewer/Approver has verified.
+function selfAssessmentPanel(no){
+  const s=STATE[no]||{};
+  const a=s.selfAssessment||'';
+  const n=s.selfAssessmentNote||'';
+  if(!a && !n) return '';
+  return `<div class="mt-3 pt-3 border-t border-slate-200">
+    <div class="flex items-center gap-2 flex-wrap mb-1">
+      <span class="text-xs font-bold text-slate-500">ผลประเมินตนเอง (ไฟล์ ITGR FY2026) <span class="en">/ Self-assessment, FY2026 workbook</span></span>
+      ${a?`<span class="text-[11px] px-2 py-0.5 rounded-full font-medium ${SELF_BG[a]||'bg-slate-100 text-slate-600'}">${a} ${SELF_TH[a]||''}</span>`:''}
+    </div>
+    ${n?`<div class="text-sm text-slate-600 whitespace-pre-line bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">${esc(n)}</div>`:''}
+  </div>`;
 }
 
 // ---------- WORKFLOW (v1.3) ----------
@@ -579,7 +688,7 @@ async function refreshItems(){
     const res=await fetchJSON('/api/items');
     ITEMS=res.items;
     STATE={};
-    ITEMS.forEach(it=>{ STATE[it.no]={status:it.status, owner:it.owner, note:it.note, clickupUrl:it.clickupUrl, workflowState:it.workflowState}; });
+    ITEMS.forEach(it=>{ STATE[it.no]={status:it.status, owner:it.owner, note:it.note, clickupUrl:it.clickupUrl, workflowState:it.workflowState, selfAssessment:it.selfAssessment, selfAssessmentNote:it.selfAssessmentNote}; });
     HISTORY={};
   }finally{ render(); }
 }
@@ -873,7 +982,7 @@ async function init(){
   DRIVE = driveRes.folders;
   APPX = appxRes.appendices;
   STATE = {};
-  ITEMS.forEach(it=>{ STATE[it.no] = { status: it.status, owner: it.owner, note: it.note, clickupUrl: it.clickupUrl, workflowState: it.workflowState }; });
+  ITEMS.forEach(it=>{ STATE[it.no] = { status: it.status, owner: it.owner, note: it.note, clickupUrl: it.clickupUrl, workflowState: it.workflowState, selfAssessment: it.selfAssessment, selfAssessmentNote: it.selfAssessmentNote }; });
   rebuildCats();
   render();
 }

@@ -1,0 +1,482 @@
+[
+  {
+    "no": 1,
+    "answer": "×",
+    "remarks": ""
+  },
+  {
+    "no": 2,
+    "answer": "×",
+    "remarks": ""
+  },
+  {
+    "no": 3,
+    "answer": "〇",
+    "remarks": "・Management of IT systems and equipment is primarily handled by the manager belonging to the MIS & Infrastructure Support Dept.\n・The person in charge oversees the digital strategy and governance areas and is also responsible for information management, system development, and the formulation of security policies."
+  },
+  {
+    "no": 4,
+    "answer": "〇",
+    "remarks": "The Strategic Digital Manager belonging to the Digital and Innovation Dept. is responsible for information management."
+  },
+  {
+    "no": 5,
+    "answer": "×",
+    "remarks": "・The target company operates a process requiring approval from the IT department manager when introducing all systems and services, not limited to cloud services.\n・However, it is unclear whether this aligns with the ITGR."
+  },
+  {
+    "no": 6,
+    "answer": "×",
+    "remarks": "・When introducing critical systems that store confidential information, vendor selection was not conducted using criteria such as those listed in column D."
+  },
+  {
+    "no": 7,
+    "answer": "〇",
+    "remarks": "・Security training is provided as part of onboarding training.\n・Security training was provided to existing employees via e-learning in 2024 and 2025."
+  },
+  {
+    "no": 8,
+    "answer": "〇",
+    "remarks": "・Employees are informed during onboarding training and similar sessions that personal use of the company environment and the use of personal devices in the company environment are prohibited.\n・Other security awareness reminders are provided through training, email distribution, and other means."
+  },
+  {
+    "no": 9,
+    "answer": "-",
+    "remarks": ""
+  },
+  {
+    "no": 10,
+    "answer": "×",
+    "remarks": "The IT management of the subject company’s affiliate (World Energia) is outsourced independently by that affiliate, and since Autocorp is not involved in the process, it has become a black box. (Given its small scale, it is questionable whether an IT environment at Marubeni’s level is truly necessary.)"
+  },
+  {
+    "no": 11,
+    "answer": "×",
+    "remarks": "Since it also serves as a warehouse and the building is old, anyone can enter."
+  },
+  {
+    "no": 12,
+    "answer": "〇",
+    "remarks": "・The server room is locked with a key provided only to the IT department and building administrators.\n・Records of entry and exit are maintained in a paper log completed upon entering and leaving."
+  },
+  {
+    "no": 13,
+    "answer": "〇",
+    "remarks": "・Access permissions for the core system (Oracle NetSuite) are configured based on a matrix corresponding to employees’ departments and positions, created during implementation."
+  },
+  {
+    "no": 14,
+    "answer": "〇",
+    "remarks": "Access permissions are configured for each system."
+  },
+  {
+    "no": 15,
+    "answer": "×",
+    "remarks": "・The issuance and deletion of general accounts, etc., are processed by the IT department after approval by the HR manager.\n・Access privileges are granted to accounts based on a matrix consisting of department affiliation and job title.\n・Approval histories are not retained (since the process is conducted through the system, logs remain)."
+  },
+  {
+    "no": 16,
+    "answer": "×",
+    "remarks": "Same as above"
+  },
+  {
+    "no": 17,
+    "answer": "×",
+    "remarks": ""
+  },
+  {
+    "no": 18,
+    "answer": "×",
+    "remarks": ""
+  },
+  {
+    "no": 19,
+    "answer": "〇",
+    "remarks": ""
+  },
+  {
+    "no": 20,
+    "answer": "×",
+    "remarks": ""
+  },
+  {
+    "no": 21,
+    "answer": "×",
+    "remarks": "・The password policy is as follows:\n> At least 8 characters\n> Must contain uppercase and lowercase letters and must not contain the same string as the username\n> Must not be the same as any password set within the past 3 changes\n> Password changes are not allowed again less than 1 day after a password change\n> Requires a password change within 180 days\n> The account is locked for 5 minutes after 5 or more failed login attempts"
+  },
+  {
+    "no": 22,
+    "answer": "-",
+    "remarks": ""
+  },
+  {
+    "no": 23,
+    "answer": "〇",
+    "remarks": "・The system requires a password change upon initial login and masks passwords when they are entered."
+  },
+  {
+    "no": 24,
+    "answer": "×",
+    "remarks": "・A PC inventory is maintained.\n・The PC inventory satisfies almost all required items.\n・Warranty periods and warranty statuses are managed, but some devices that are out of warranty are still being used."
+  },
+  {
+    "no": 25,
+    "answer": "×",
+    "remarks": "OS information, application management, and physical asset management are not conducted (not explicitly documented)."
+  },
+  {
+    "no": 26,
+    "answer": "×",
+    "remarks": "・A server inventory ledger is maintained.\n・The server management ledger does not track warranty periods.\n・The servers’ status is checked and an inventory audit is conducted."
+  },
+  {
+    "no": 27,
+    "answer": "×",
+    "remarks": "・A network equipment inventory is maintained.\n・The network equipment inventory does not track warranty periods.\n・The condition of network equipment is checked and an inventory audit is conducted."
+  },
+  {
+    "no": 28,
+    "answer": "〇",
+    "remarks": ""
+  },
+  {
+    "no": 29,
+    "answer": "〇",
+    "remarks": ""
+  },
+  {
+    "no": 30,
+    "answer": "〇",
+    "remarks": "The target company sets up its PCs so that data cannot be saved to external terminals, including external devices."
+  },
+  {
+    "no": 31,
+    "answer": "〇",
+    "remarks": "The PC is configured so that data cannot be saved to external terminals (including external devices)."
+  },
+  {
+    "no": 32,
+    "answer": "×",
+    "remarks": "・The PCs are in a state where anyone can take them out."
+  },
+  {
+    "no": 33,
+    "answer": "-",
+    "remarks": "・The use of personally owned PCs for work is not permitted."
+  },
+  {
+    "no": 34,
+    "answer": "×",
+    "remarks": ""
+  },
+  {
+    "no": 35,
+    "answer": "×",
+    "remarks": ""
+  },
+  {
+    "no": 36,
+    "answer": "×",
+    "remarks": ""
+  },
+  {
+    "no": 37,
+    "answer": "×",
+    "remarks": "・Creating a list of approved software\n・Unable to conduct security inspections of the software to be installed\n・However, no software with high security risks has been identified in the software list"
+  },
+  {
+    "no": 38,
+    "answer": "×",
+    "remarks": ""
+  },
+  {
+    "no": 39,
+    "answer": "×",
+    "remarks": ""
+  },
+  {
+    "no": 40,
+    "answer": "×",
+    "remarks": "Not being managed properly."
+  },
+  {
+    "no": 41,
+    "answer": "〇",
+    "remarks": "・対象会社はPCにウイルス対策ソフトを導入している\n・PC起動時にウイルス対策ソフトが起動されるように設定されている"
+  },
+  {
+    "no": 42,
+    "answer": "〇",
+    "remarks": "・Windows Defender has been installed, providing antivirus protection for the server."
+  },
+  {
+    "no": 43,
+    "answer": "×",
+    "remarks": ""
+  },
+  {
+    "no": 44,
+    "answer": "〇",
+    "remarks": "・Set Windows Update to be applied automatically."
+  },
+  {
+    "no": 45,
+    "answer": "×",
+    "remarks": ""
+  },
+  {
+    "no": 46,
+    "answer": "〇",
+    "remarks": ""
+  },
+  {
+    "no": 47,
+    "answer": "〇",
+    "remarks": ""
+  },
+  {
+    "no": 48,
+    "answer": "〇",
+    "remarks": "Creating our company's network configuration diagram."
+  },
+  {
+    "no": 49,
+    "answer": "×",
+    "remarks": "Although it is understood, external network management (such as creating diagrams) is not performed."
+  },
+  {
+    "no": 50,
+    "answer": "〇",
+    "remarks": ""
+  },
+  {
+    "no": 51,
+    "answer": "〇",
+    "remarks": ""
+  },
+  {
+    "no": 52,
+    "answer": "×",
+    "remarks": "・Privileged IDs for cloud service management are controlled through user logins, and control based on IP addresses is not implemented."
+  },
+  {
+    "no": 53,
+    "answer": "〇",
+    "remarks": "・The production environment and maintenance environment are separated via VLANs, with controls in place to prevent general accounts from accessing maintenance accounts."
+  },
+  {
+    "no": 54,
+    "answer": "〇",
+    "remarks": "・The status of each item is as follows:\n\n1. Access rights are limited to the minimum necessary through a dedicated maintenance and operations environment.\n→ Access is provided via remote desktop (AnyDesk) and is limited to specific users.\n\n2. Applications and approvals are submitted to the person responsible for IT management, and records are retained.\n→ Not currently implemented.\n\n3. Work records are retained.\n→ Work records are retained using AnyDesk.\n\n4. The application details are reconciled with the work records.\n→ Not currently implemented."
+  },
+  {
+    "no": 55,
+    "answer": "〇",
+    "remarks": "Given that the following is marked ×, would this also be marked 〇?"
+  },
+  {
+    "no": 56,
+    "answer": "×",
+    "remarks": "・The subject company is unable to monitor communications both inside and outside the company."
+  },
+  {
+    "no": 57,
+    "answer": "〇",
+    "remarks": ""
+  },
+  {
+    "no": 58,
+    "answer": "〇",
+    "remarks": ""
+  },
+  {
+    "no": 59,
+    "answer": "×",
+    "remarks": "・Although two-factor authentication has been implemented for Oracle NetSuite and Gmail, its use is not required for all employees."
+  },
+  {
+    "no": 60,
+    "answer": "-",
+    "remarks": "・I am not using a VPN."
+  },
+  {
+    "no": 61,
+    "answer": "×",
+    "remarks": "・Remote access is performed using AnyDesk (agent software for remote access).\n・Clipboard sharing and data downloads are disabled on the relevant system."
+  },
+  {
+    "no": 62,
+    "answer": "〇",
+    "remarks": "・Announcement during IT training"
+  },
+  {
+    "no": 63,
+    "answer": "〇",
+    "remarks": "What criteria are used to judge something as a “〇”?"
+  },
+  {
+    "no": 64,
+    "answer": "×",
+    "remarks": ""
+  },
+  {
+    "no": 65,
+    "answer": "×",
+    "remarks": ""
+  },
+  {
+    "no": 66,
+    "answer": "-",
+    "remarks": ""
+  },
+  {
+    "no": 67,
+    "answer": "×",
+    "remarks": "・Email spam filtering is implemented, but virus scanning of attachments is not performed (is that even possible?)."
+  },
+  {
+    "no": 68,
+    "answer": "×",
+    "remarks": ""
+  },
+  {
+    "no": 69,
+    "answer": "×",
+    "remarks": "・2. Has not been implemented. 1. Will be communicated during training."
+  },
+  {
+    "no": 70,
+    "answer": "〇",
+    "remarks": "・LINE Chat and Google Chat are used for business purposes.\n・Two-factor authentication is available only for Google Chat.\n・Communications are encrypted for both chat tools.\n・Communication logs are retained for both chat tools.\n・There are no issues with the systems or vendors."
+  },
+  {
+    "no": 71,
+    "answer": "〇",
+    "remarks": ""
+  },
+  {
+    "no": 72,
+    "answer": "〇",
+    "remarks": ""
+  },
+  {
+    "no": 73,
+    "answer": "〇",
+    "remarks": ""
+  },
+  {
+    "no": 74,
+    "answer": "-",
+    "remarks": "・VDI is not being used."
+  },
+  {
+    "no": 75,
+    "answer": "〇",
+    "remarks": "・Able to retrieve logs in real time."
+  },
+  {
+    "no": 76,
+    "answer": "〇",
+    "remarks": "Same as above"
+  },
+  {
+    "no": 77,
+    "answer": "〇",
+    "remarks": "・Data backups are performed in the cloud through INET.\n・Internal company data is backed up on a NAS."
+  },
+  {
+    "no": 78,
+    "answer": "〇",
+    "remarks": ""
+  },
+  {
+    "no": 79,
+    "answer": "×",
+    "remarks": ""
+  },
+  {
+    "no": 80,
+    "answer": "×",
+    "remarks": "・24/365 support is not available."
+  },
+  {
+    "no": 81,
+    "answer": "×",
+    "remarks": "・Logs can be obtained in real time.\n・On the other hand, neither SIEM implementation nor specific criteria for log analysis have been established."
+  },
+  {
+    "no": 82,
+    "answer": "×",
+    "remarks": ""
+  },
+  {
+    "no": 83,
+    "answer": "〇",
+    "remarks": ""
+  },
+  {
+    "no": 84,
+    "answer": "〇",
+    "remarks": ""
+  },
+  {
+    "no": 85,
+    "answer": "-",
+    "remarks": "・The secondee will report to Marubeni; no report has been prepared."
+  },
+  {
+    "no": 86,
+    "answer": "〇",
+    "remarks": ""
+  },
+  {
+    "no": 87,
+    "answer": "×",
+    "remarks": "・Unable to define or set the level of information confidentiality."
+  },
+  {
+    "no": 88,
+    "answer": "〇",
+    "remarks": "・Stored on Google Drive"
+  },
+  {
+    "no": 89,
+    "answer": "〇",
+    "remarks": ""
+  },
+  {
+    "no": 90,
+    "answer": "×",
+    "remarks": "No access rights inventory has been conducted."
+  },
+  {
+    "no": 91,
+    "answer": "〇",
+    "remarks": "・Stored on Google Drive"
+  },
+  {
+    "no": 92,
+    "answer": "×",
+    "remarks": "No notification will be given."
+  },
+  {
+    "no": 93,
+    "answer": "〇",
+    "remarks": "・When setting access permissions, also set the action (view only, etc.)."
+  },
+  {
+    "no": 94,
+    "answer": "〇",
+    "remarks": "Only those granted access permissions can access it."
+  },
+  {
+    "no": 95,
+    "answer": "〇",
+    "remarks": ""
+  },
+  {
+    "no": 96,
+    "answer": "-",
+    "remarks": "Basically, the sales staff hand it over in person."
+  }
+]

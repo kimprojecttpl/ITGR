@@ -205,3 +205,43 @@ create index if not exists item_workflow_events_item_no_idx on item_workflow_eve
 alter table item_evidence_files  enable row level security;
 alter table item_workflow_events enable row level security;
 -- Same default-deny posture as every other table — service role (BFF) only.
+
+-- =============================================================================
+-- v1.5: FY2026 alignment.
+--
+-- The FY2026 workbook (Ver.1, 3 Apr 2026) ships two things FY2025 did not:
+-- AutoCorp's completed self-assessment, and Marubeni's own scoring formulas.
+-- Reconciling with them requires two changes here. Safe to re-run.
+-- =============================================================================
+
+-- ---------------------------------------------------------------------------
+-- 'Not Applicable' returns as a SIXTH status, distinct from 'Not Compliant'.
+--
+-- v1.3 repurposed 'Not Applicable' to mean 'Not Compliant' on the reasoning
+-- that nothing needed a "doesn't apply to us" state. The FY2026 workbook uses
+-- exactly that state for 8 requirements, and — decisively — Marubeni's scoring
+-- sheet EXCLUDES them from the denominator rather than scoring them as
+-- failures. Keeping them merged would understate AutoCorp against Marubeni's
+-- own method, so N/A comes back alongside NC rather than replacing it again.
+-- ---------------------------------------------------------------------------
+alter table item_status drop constraint if exists item_status_status_check;
+alter table item_status add constraint item_status_status_check
+  check (status in ('Not Started', 'In Progress', 'Compliant', 'Partial',
+                    'Not Compliant', 'Not Applicable'));
+
+-- ---------------------------------------------------------------------------
+-- The workbook's self-assessment, kept SEPARATE from workflow-driven `status`.
+--
+-- `status` may only reach a compliance verdict through User -> Reviewer ->
+-- Approver (PRD goal 6). Importing the spreadsheet answers into `status`
+-- directly would fabricate 45 approvals that no Approver ever gave. They live
+-- in their own columns instead, so the dashboard can report the official
+-- Marubeni score exactly as the auditor computes it, while `status` continues
+-- to mean "what our own approval workflow has actually verified."
+-- ---------------------------------------------------------------------------
+alter table item_status add column if not exists self_assessment text;
+alter table item_status drop constraint if exists item_status_self_assessment_check;
+alter table item_status add constraint item_status_self_assessment_check
+  check (self_assessment is null or self_assessment in ('〇', '×', '-'));
+
+alter table item_status add column if not exists self_assessment_note text not null default '';

@@ -1,8 +1,8 @@
 # IT Governance Dashboard — AutoCorp
 
-Interactive dashboard สำหรับทีม **COE&S — AutoCorp (ATC)** อ้างอิง **Marubeni Group ITGR Checklist FY2025 Ver.1** (96 ข้อ, 8 หมวด)
+Interactive dashboard สำหรับทีม **COE&S — AutoCorp (ATC)** อ้างอิง **Marubeni Group ITGR Checklist FY2026 Ver.1** (96 ข้อ, 8 หมวด)
 
-Static frontend + Vercel serverless BFF + Supabase, with PIN login and 3-tier RBAC (`admin` / `read_write` / `read_only`). See [PRD.md](PRD.md) for the full spec and [CLAUDE.md](CLAUDE.md) for architecture/agent notes.
+Static frontend + Vercel serverless BFF + Supabase, with PIN login and role-based access (`admin` / `user` / `reviewer` / `approver` / `read_only`) driving a User → Reviewer → Approver approval workflow. See [PRD.md](PRD.md) for the full spec and [CLAUDE.md](CLAUDE.md) for architecture/agent notes.
 
 ## 🚀 Setup & Deployment
 
@@ -27,9 +27,22 @@ npm run seed                                                  # loads data/*.jso
 npm run create-user -- "Your Name" 4821 admin                 # bootstrap the first admin PIN
 ```
 
-(`data/*.json` was extracted once from the legacy `index.html` via `npm run extract-data` — re-run only if the source checklist content changes.)
+### 4. Refresh from a new ITGR workbook (each fiscal year)
 
-### 4. Deploy on Vercel
+`data/items.json` and `data/assessment.json` are generated from the official Marubeni workbook. When a new FY release arrives:
+
+```bash
+npm run extract-xlsx -- "path/to/Marubeni_..._Checklist_English.xlsx"
+npm run seed                                                  # upsert the refreshed requirements
+npm run import-assessment                                     # dry run — shows what would change
+npm run import-assessment -- --commit                         # write the self-assessment answers
+```
+
+Requires Python with `openpyxl` (`pip install openpyxl`). Item numbers are stable across releases, so tracker state, workflow history and the audit trail all survive a refresh. The self-assessment lands in its own `self_assessment` columns and never overwrites workflow-driven `status` — only the Reviewer/Approver flow sets a compliance verdict.
+
+> `npm run extract-data` is the superseded one-off that scraped the original `index.html`; it is kept only for provenance.
+
+### 5. Deploy on Vercel
 
 1. **Import Project** บน Vercel Dashboard → เลือก repo `kimprojecttpl/ITGR`
 2. Framework Preset: **Other** — no build command, no output directory (root serves `index.html`/`login.html`; `/api/*.js` is auto-detected as serverless functions)
@@ -50,8 +63,8 @@ Unauthenticated visits to `index.html` redirect to `login.html`. Users sign in w
 │   ├── drive.js / appendices.js / me.js
 ├── lib/                  # shared server-side helpers (auth, supabase, pin hashing)
 ├── supabase/schema.sql   # DB schema (checklist_items, item_status, users, audit_log, ...)
-├── scripts/               # extract-data, seed, create-user (one-time/admin CLI)
-├── data/                  # checklist/drive/appendix data extracted for seeding
+├── scripts/               # extract-xlsx, seed, create-user, import-assessment (CLI)
+├── data/                  # checklist/drive/appendix/assessment data for seeding
 ├── vercel.json           # Vercel config — security headers, cleanUrls
 ├── PRD.md / CLAUDE.md
 └── README.md
@@ -62,8 +75,8 @@ Unauthenticated visits to `index.html` redirect to `login.html`. Users sign in w
 - Frontend: HTML5 + Tailwind CSS (CDN), vanilla JavaScript, Sarabun (TH)
 - BFF: Vercel serverless functions (Node, `@supabase/supabase-js`, `jsonwebtoken`)
 - Database: Supabase (Postgres)
-- Auth: PIN login, JWT session cookie, 3-tier RBAC
+- Auth: PIN login, JWT session cookie, 5-role RBAC + approval workflow
 
 ## 🔒 Scope
 
-ข้อมูลในแดชบอร์ดอ้างอิงเฉพาะ **ITGR Checklist FY2025** และเอกสารใน Google Drive *"IT Governance / IT DD 2025"* — ไม่อ้างอิงข้อมูลภายนอก
+ข้อมูลในแดชบอร์ดอ้างอิงเฉพาะ **ITGR Checklist FY2026** และเอกสารใน Google Drive *"IT Governance / IT DD 2025"* — ไม่อ้างอิงข้อมูลภายนอก

@@ -6,8 +6,10 @@
   "description": "IT Governance Dashboard — AutoCorp (ATC). Static frontend + Vercel BFF + Supabase.",
   "scripts": {
     "extract-data": "node scripts/extract-data.mjs",
+    "extract-xlsx": "python scripts/extract-xlsx.py",
     "seed": "node scripts/seed.mjs",
-    "create-user": "node scripts/create-user.mjs"
+    "create-user": "node scripts/create-user.mjs",
+    "import-assessment": "node scripts/import-assessment.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",
