@@ -39,7 +39,7 @@ console.log(`remarks present on ${rows.filter((r) => r.remarks).length} items`);
 const { error: probeErr } = await supabase.from("item_status").select("self_assessment").limit(1);
 if (probeErr?.code === "42703") {
   console.error(
-    "\nitem_status.self_assessment does not exist yet — apply the v1.5 block of" +
+    "\nitem_status.self_assessment does not exist yet — apply the v1.7 block of" +
     "\nsupabase/schema.sql in the Supabase SQL editor first, then re-run."
   );
   process.exit(1);

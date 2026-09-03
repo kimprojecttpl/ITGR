@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>External Read API — เอกสารประกอบการใช้งาน | ITGR Dashboard</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  body{font-family:'Sarabun',system-ui,sans-serif;}
+  code, pre, .mono{font-family:'JetBrains Mono',ui-monospace,monospace;}
+  html{scroll-behavior:smooth;}
+  pre{background:#0f172a;color:#e2e8f0;border-radius:.75rem;padding:1rem 1.1rem;overflow-x:auto;font-size:.8rem;line-height:1.6;}
+  pre .c1{color:#64748b;} /* comment */
+  pre .s1{color:#86efac;} /* string / literal */
+  pre .k1{color:#93c5fd;} /* keyword / method */
+  pre .n1{color:#fca5a5;} /* number / status */
+  .anchor-offset{scroll-margin-top:5.5rem;}
+  ::-webkit-scrollbar{height:9px;width:9px;}
+  ::-webkit-scrollbar-thumb{background:#94a3b8;border-radius:6px;}
+  ::-webkit-scrollbar-track{background:#e2e8f0;}
+  .navlink{display:block;padding:.35rem .6rem;border-radius:.5rem;color:#475569;font-size:.85rem;}
+  .navlink:hover{background:#eff6ff;color:#1d4ed8;}
+  .navlink.sub{padding-left:1.4rem;font-size:.8rem;color:#64748b;}
+  @media print{.noprint{display:none!important;}}
+</style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+<header class="bg-gradient-to-r from-blue-800 via-blue-700 to-sky-600 text-white noprint">
+  <div class="max-w-7xl mx-auto px-4 py-5 flex items-center justify-between flex-wrap gap-3">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center text-xl">🔌</div>
+      <div>
+        <h1 class="text-lg sm:text-xl font-bold leading-tight">External Read API — เอกสารประกอบการใช้งาน</h1>
+        <p class="text-blue-100 text-xs">ITGR Dashboard · v1.0 · เผยแพร่ 27 ส.ค. 2026</p>
+      </div>
+    </div>
+    <a href="index.html" class="text-xs px-3 py-1.5 rounded-lg bg-white/15 hover:bg-white/25">← กลับไปแดชบอร์ด</a>
+  </div>
+</header>
+
+<div class="max-w-7xl mx-auto px-4 py-8 grid md:grid-cols-[220px_1fr] gap-8">
+
+  <!-- ---------- SIDEBAR ---------- -->
+  <nav class="hidden md:block noprint">
+    <div class="sticky top-6 space-y-0.5 text-sm">
+      <a class="navlink font-semibold text-slate-700" href="#quickstart">🚀 เริ่มใช้ใน 3 ขั้น</a>
+      <a class="navlink font-semibold text-slate-700" href="#auth">🔑 การยืนยันตัวตน</a>
+      <a class="navlink font-semibold text-slate-700" href="#endpoints">📚 Endpoint ทั้งหมด</a>
+      <a class="navlink sub" href="#ep-meta">GET /meta</a>
+      <a class="navlink sub" href="#ep-items">GET /items</a>
+      <a class="navlink sub" href="#ep-item">GET /items/{no}</a>
+      <a class="navlink sub" href="#ep-history">GET /items/{no}/history</a>
+      <a class="navlink sub" href="#ep-summary">GET /summary</a>
+      <a class="navlink font-semibold text-slate-700" href="#scopes">🎫 Scopes</a>
+      <a class="navlink font-semibold text-slate-700" href="#errors">⚠️ รูปแบบ Error</a>
+      <a class="navlink font-semibold text-slate-700" href="#ratelimit">⏱️ Rate limit</a>
+      <a class="navlink font-semibold text-slate-700" href="#vibe">💬 ถามแบบ Vibe คืออะไร</a>
+      <a class="navlink font-semibold text-slate-700" href="#ai-agentic">🤖 ต่อกับ AI Agentic</a>
+      <a class="navlink sub" href="#ai-n8n">n8n</a>
+      <a class="navlink sub" href="#ai-claude">Claude</a>
+      <a class="navlink sub" href="#ai-gpt">Custom GPT / OpenAI</a>
+      <a class="navlink sub" href="#ai-line">LINE Bot</a>
+      <a class="navlink font-semibold text-slate-700" href="#other-apps">🔗 เชื่อมกับแอปอื่น</a>
+      <a class="navlink font-semibold text-slate-700" href="#security">🛡️ ความปลอดภัย</a>
+      <a class="navlink font-semibold text-slate-700" href="#faq">❓ คำถามที่พบบ่อย</a>
+    </div>
+  </nav>
+
+  <!-- ---------- MAIN ---------- -->
+  <main class="space-y-10 pb-24 min-w-0">
+
+    <section class="bg-white rounded-2xl border border-slate-200 p-6">
+      <p class="text-sm text-slate-600 leading-relaxed">
+        External Read API เปิดให้ระบบภายนอก (n8n, LINE bot, Claude, สคริปต์ของทีม ฯลฯ) <b>อ่านสถานะ ITGR ได้โดยตรง</b>
+        ไม่ต้องมีคนเปิดเว็บแล้วมานั่งกรองเอง — <b>อ่านอย่างเดียว ไม่มีสิทธิ์เขียนหรือแก้ไขข้อมูลใด ๆ</b>
+        ใช้ token แยกจากระบบ PIN login ของแดชบอร์ดโดยสิ้นเชิง จะรั่วหรือหลุดก็เพิกถอนได้ทันทีโดยไม่กระทบผู้ใช้คนอื่น
+      </p>
+      <div class="mt-4 flex flex-wrap gap-2 text-xs">
+        <span class="px-2.5 py-1 rounded-full bg-green-100 text-green-700 font-medium">✓ Read-only</span>
+        <span class="px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 font-medium">Bearer token</span>
+        <span class="px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 font-medium">ไม่ต้องใช้ API key ของ LLM</span>
+        <span class="px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 font-medium">รองรับ TH/EN</span>
+      </div>
+    </section>
+
+    <!-- ===================== QUICKSTART ===================== -->
+    <section id="quickstart" class="anchor-offset">
+      <h2 class="text-xl font-bold text-blue-800 mb-4">🚀 เริ่มใช้ใน 3 ขั้น</h2>
+      <div class="grid md:grid-cols-3 gap-4 mb-4">
+        <div class="bg-white rounded-xl border border-slate-200 p-4">
+          <div class="text-2xl font-bold text-blue-600 mb-1">1</div>
+          <div class="font-semibold text-sm text-slate-700 mb-1">ขอ token จาก Admin</div>
+          <p class="text-xs text-slate-500">ให้ admin เข้า แท็บ <b>Admin → External Read API — Tokens</b> ในแดชบอร์ด แล้วออก token ให้ — ค่า token แสดงได้ครั้งเดียวตอนสร้าง เก็บให้ดี</p>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 p-4">
+          <div class="text-2xl font-bold text-blue-600 mb-1">2</div>
+          <div class="font-semibold text-sm text-slate-700 mb-1">ยิง /meta ครั้งแรก</div>
+          <p class="text-xs text-slate-500">ดึง <code class="text-[11px] bg-slate-100 px-1 rounded">/api/v1/meta</code> เพื่อรู้ว่ามีหมวด/สถานะ/พารามิเตอร์อะไรบ้าง — endpoint นี้คือกุญแจของการถามแบบ Vibe</p>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 p-4">
+          <div class="text-2xl font-bold text-blue-600 mb-1">3</div>
+          <div class="font-semibold text-sm text-slate-700 mb-1">ถามคำถามจริง</div>
+          <p class="text-xs text-slate-500">กรองด้วย <code class="text-[11px] bg-slate-100 px-1 rounded">/items</code> หรือดูตัวเลขสรุปด้วย <code class="text-[11px] bg-slate-100 px-1 rounded">/summary</code></p>
+        </div>
+      </div>
+      <pre><span class="c1"># Base URL</span>
+<span class="k1">https://itgrmrbn.vercel.app/api/v1</span>
+
+<span class="c1"># ทดสอบว่า token ใช้ได้ไหม</span>
+curl -H <span class="s1">"Authorization: Bearer itgr_live_xxxxxxxxxxxxxxxxxxxxxxxx"</span> \
+  <span class="k1">https://itgrmrbn.vercel.app/api/v1/meta</span></pre>
+    </section>
+
+    <!-- ===================== AUTH ===================== -->
+    <section id="auth" class="anchor-offset">
+      <h2 class="text-xl font-bold text-blue-800 mb-3">🔑 การยืนยันตัวตน</h2>
+      <div class="bg-white rounded-xl border border-slate-200 p-5 space-y-3 text-sm text-slate-600 leading-relaxed">
+        <p>ทุก request ต้องแนบ header <code class="text-xs bg-slate-100 px-1.5 py-0.5 rounded">Authorization: Bearer &lt;token&gt;</code></p>
+        <pre>curl -H <span class="s1">"Authorization: Bearer itgr_live_xxxxxxxxxxxxxxxxxxxxxxxx"</span> \
+  <span class="k1">https://itgrmrbn.vercel.app/api/v1/summary</span></pre>
+        <ul class="list-disc pl-5 space-y-1">
+          <li>Token นี้<b>คนละระบบ</b>กับ PIN login ของแดชบอร์ด — ใช้แทนกันไม่ได้ทั้งสองทาง</li>
+          <li>Token <b>ไม่หมดอายุเองโดยดีฟอลต์</b> จนกว่า admin จะตั้งวันหมดอายุหรือกดเพิกถอน</li>
+          <li>ไม่มีการส่ง CORS header ใด ๆ — เรียกจาก JavaScript ในเบราว์เซอร์ของเว็บอื่นไม่ได้ (ป้องกัน token หลุดผ่านหน้าเว็บ) ใช้ได้จากฝั่งเซิร์ฟเวอร์/สคริปต์/เครื่องมือ automation เท่านั้น</li>
+          <li>ทุก request ถูกบันทึกไว้ (ใครเรียก endpoint ไหน เมื่อไหร่ ผลลัพธ์อะไร) — admin ตรวจสอบย้อนหลังได้</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ===================== ENDPOINTS ===================== -->
+    <section id="endpoints" class="anchor-offset">
+      <h2 class="text-xl font-bold text-blue-800 mb-3">📚 Endpoint ทั้งหมด</h2>
+      <div class="overflow-x-auto bg-white rounded-xl border border-slate-200 mb-6">
+        <table class="w-full text-left text-sm">
+          <thead><tr class="bg-slate-50 text-xs text-slate-500">
+            <th class="px-3 py-2">Method</th><th class="px-3 py-2">Path</th><th class="px-3 py-2">Scope ที่ต้องมี</th><th class="px-3 py-2">ใช้ทำอะไร</th>
+          </tr></thead>
+          <tbody class="divide-y divide-slate-100">
+            <tr><td class="px-3 py-2"><span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-green-100 text-green-700">GET</span></td><td class="px-3 py-2 font-mono text-xs">/meta</td><td class="px-3 py-2 text-xs text-slate-500">token ที่ยังไม่ถูกเพิกถอน</td><td class="px-3 py-2 text-xs">รายการหมวด/สถานะ/พารามิเตอร์ทั้งหมด + ตัวอย่างคำถาม</td></tr>
+            <tr><td class="px-3 py-2"><span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-green-100 text-green-700">GET</span></td><td class="px-3 py-2 font-mono text-xs">/items</td><td class="px-3 py-2 text-xs text-slate-500">items:read</td><td class="px-3 py-2 text-xs">ค้นหา/กรองรายการข้อกำหนดทั้ง 96 ข้อ</td></tr>
+            <tr><td class="px-3 py-2"><span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-green-100 text-green-700">GET</span></td><td class="px-3 py-2 font-mono text-xs">/items/{no}</td><td class="px-3 py-2 text-xs text-slate-500">items:read</td><td class="px-3 py-2 text-xs">รายละเอียดข้อกำหนด 1 ข้อ</td></tr>
+            <tr><td class="px-3 py-2"><span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-green-100 text-green-700">GET</span></td><td class="px-3 py-2 font-mono text-xs">/items/{no}/history</td><td class="px-3 py-2 text-xs text-slate-500">items:read + history:read</td><td class="px-3 py-2 text-xs">ไทม์ไลน์การอนุมัติของข้อนั้น</td></tr>
+            <tr><td class="px-3 py-2"><span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-green-100 text-green-700">GET</span></td><td class="px-3 py-2 font-mono text-xs">/summary</td><td class="px-3 py-2 text-xs text-slate-500">summary:read</td><td class="px-3 py-2 text-xs">ตัวเลขสรุป % ความคืบหน้า/เกรด/นับตามสถานะ</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- /meta -->
+      <div id="ep-meta" class="anchor-offset bg-white rounded-xl border border-slate-200 p-5 mb-4">
+        <h3 class="font-bold text-slate-800 mb-1"><span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-green-100 text-green-700 align-middle mr-1">GET</span><code class="text-sm">/api/v1/meta</code></h3>
+        <p class="text-xs text-slate-500 mb-3">ไม่ต้องมี scope เฉพาะ — token ที่ยัง active ใช้ได้เลย เป็นจุดเริ่มต้นเสมอเมื่อเชื่อมระบบใหม่ ผลลัพธ์ cache ได้ 1 ชั่วโมง</p>
+        <p class="text-sm text-slate-600 mb-2">คืนข้อมูลทุกอย่างที่ต้องรู้เพื่อประกอบ request เอง: รายชื่อ 8 หมวด (TH/EN), สถานะที่เป็นไปได้, ระดับความเสี่ยง, ประเภทคำถาม, เกณฑ์เกรด, และ <b>ตัวอย่างคำถามภาษาคนคู่กับ URL ที่ควรยิง</b> — นี่คือสิ่งที่ทำให้ AI ภายนอกใช้ API นี้ได้โดยไม่ต้องมีคนเขียน mapping ทีละคำถาม</p>
+        <pre><span class="c1">// ตัวอย่างผลลัพธ์จริง (ตัดให้สั้น)</span>
+{
+  <span class="s1">"version"</span>: <span class="s1">"1.0"</span>,
+  <span class="s1">"languages"</span>: [<span class="s1">"th"</span>, <span class="s1">"en"</span>],
+  <span class="s1">"scopes"</span>: [<span class="s1">"items:read"</span>, <span class="s1">"summary:read"</span>, <span class="s1">"history:read"</span>],
+  <span class="s1">"categories"</span>: [
+    { <span class="s1">"no"</span>: 1, <span class="s1">"name_th"</span>: <span class="s1">"1.การกำกับดูแลความปลอดภัยสารสนเทศ..."</span>,
+      <span class="s1">"name_en"</span>: <span class="s1">"1.Information security governance..."</span>,
+      <span class="s1">"short_th"</span>: <span class="s1">"การกำกับดูแลความปลอดภัยสารสนเทศ"</span>, <span class="s1">"short_en"</span>: <span class="s1">"Security Governance"</span> }
+    <span class="c1">// ... รวม 8 หมวด</span>
+  ],
+  <span class="s1">"statuses"</span>: [<span class="s1">"Not Started"</span>,<span class="s1">"In Progress"</span>,<span class="s1">"Compliant"</span>,<span class="s1">"Partial"</span>,<span class="s1">"Not Compliant"</span>],
+  <span class="s1">"workflow_states"</span>: [<span class="s1">"Not Started"</span>, <span class="s1">"..."</span>, <span class="s1">"Pending Review"</span>, <span class="s1">"Pending Approval"</span>, <span class="s1">"..."</span>],
+  <span class="s1">"risk_levels"</span>: [<span class="s1">"Very High"</span>,<span class="s1">"High"</span>,<span class="s1">"Middle"</span>,<span class="s1">"Low"</span>],
+  <span class="s1">"filters"</span>: { <span class="s1">"cat"</span>: {...}, <span class="s1">"risk"</span>: {...}, <span class="s1">"status"</span>: {...}, <span class="s1">"..."</span>: <span class="s1">"..."</span> },
+  <span class="s1">"example_questions"</span>: [
+    { <span class="s1">"question_th"</span>: <span class="s1">"หมวดไหนยังแดงอยู่บ้าง"</span>,
+      <span class="s1">"question_en"</span>: <span class="s1">"Which categories are still red?"</span>,
+      <span class="s1">"request"</span>: <span class="s1">"GET /api/v1/items?risk=Very High&amp;status=Not Started"</span> }
+    <span class="c1">// ... อีก 7 ตัวอย่าง</span>
+  ]
+}</pre>
+      </div>
+
+      <!-- /items -->
+      <div id="ep-items" class="anchor-offset bg-white rounded-xl border border-slate-200 p-5 mb-4">
+        <h3 class="font-bold text-slate-800 mb-1"><span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-green-100 text-green-700 align-middle mr-1">GET</span><code class="text-sm">/api/v1/items</code></h3>
+        <p class="text-xs text-slate-500 mb-3">Scope: <code class="bg-slate-100 px-1 rounded">items:read</code></p>
+        <div class="overflow-x-auto mb-3">
+          <table class="w-full text-left text-xs border border-slate-200 rounded-lg overflow-hidden">
+            <thead><tr class="bg-slate-50 text-slate-500"><th class="px-2 py-1.5">พารามิเตอร์</th><th class="px-2 py-1.5">ชนิด</th><th class="px-2 py-1.5">คำอธิบาย</th></tr></thead>
+            <tbody class="divide-y divide-slate-100">
+              <tr><td class="px-2 py-1.5 font-mono">cat</td><td class="px-2 py-1.5 text-slate-400">1–8</td><td class="px-2 py-1.5">หมวดข้อกำหนด</td></tr>
+              <tr><td class="px-2 py-1.5 font-mono">risk</td><td class="px-2 py-1.5 text-slate-400">enum</td><td class="px-2 py-1.5">Very High / High / Middle / Low</td></tr>
+              <tr><td class="px-2 py-1.5 font-mono">priority</td><td class="px-2 py-1.5 text-slate-400">enum</td><td class="px-2 py-1.5">◎ (สูงสุด) / 〇 (สำคัญ) / ว่าง (ปกติ)</td></tr>
+              <tr><td class="px-2 py-1.5 font-mono">status</td><td class="px-2 py-1.5 text-slate-400">enum</td><td class="px-2 py-1.5">Not Started / In Progress / Compliant / Partial / Not Compliant</td></tr>
+              <tr><td class="px-2 py-1.5 font-mono">workflow_state</td><td class="px-2 py-1.5 text-slate-400">enum</td><td class="px-2 py-1.5">สถานะ workflow ละเอียด เช่น Pending Review, Pending Approval</td></tr>
+              <tr><td class="px-2 py-1.5 font-mono">owner</td><td class="px-2 py-1.5 text-slate-400">string</td><td class="px-2 py-1.5">ค้นชื่อผู้รับผิดชอบ (partial match)</td></tr>
+              <tr><td class="px-2 py-1.5 font-mono">article</td><td class="px-2 py-1.5 text-slate-400">string</td><td class="px-2 py-1.5">ค้นเลขมาตรา ITGR (partial match)</td></tr>
+              <tr><td class="px-2 py-1.5 font-mono">q</td><td class="px-2 py-1.5 text-slate-400">string</td><td class="px-2 py-1.5">ค้นข้อความในชื่อ/เนื้อหา/เกณฑ์/หลักฐาน — ค้นทั้งไทยและอังกฤษเสมอ</td></tr>
+              <tr><td class="px-2 py-1.5 font-mono">updated_since</td><td class="px-2 py-1.5 text-slate-400">ISO datetime</td><td class="px-2 py-1.5">เอาเฉพาะข้อที่เปลี่ยนสถานะตั้งแต่เวลานี้เป็นต้นไป</td></tr>
+              <tr><td class="px-2 py-1.5 font-mono">lang</td><td class="px-2 py-1.5 text-slate-400">th | en</td><td class="px-2 py-1.5">ภาษาของเนื้อหา (ค่าเริ่มต้น th)</td></tr>
+              <tr><td class="px-2 py-1.5 font-mono">limit / offset</td><td class="px-2 py-1.5 text-slate-400">integer</td><td class="px-2 py-1.5">แบ่งหน้า — limit สูงสุด 100 (ค่าเริ่มต้น 25)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <pre>curl -H <span class="s1">"Authorization: Bearer $TOKEN"</span> \
+  <span class="s1">"https://itgrmrbn.vercel.app/api/v1/items?risk=Very%20High&amp;status=Not%20Started&amp;limit=5"</span>
+
+{
+  <span class="s1">"total"</span>: <span class="n1">28</span>, <span class="s1">"limit"</span>: <span class="n1">5</span>, <span class="s1">"offset"</span>: <span class="n1">0</span>, <span class="s1">"has_more"</span>: <span class="k1">true</span>,
+  <span class="s1">"items"</span>: [
+    {
+      <span class="s1">"no"</span>: <span class="n1">1</span>,
+      <span class="s1">"category"</span>: { <span class="s1">"no"</span>: <span class="n1">1</span>, <span class="s1">"name"</span>: <span class="s1">"1.การกำกับดูแล..."</span>, <span class="s1">"short"</span>: <span class="s1">"การกำกับดูแลความปลอดภัยสารสนเทศ"</span> },
+      <span class="s1">"name"</span>: <span class="s1">"การจัดทำและทบทวนระเบียบความมั่นคงปลอดภัยด้าน IT"</span>,
+      <span class="s1">"content"</span>: <span class="s1">"..."</span>, <span class="s1">"standard"</span>: <span class="s1">"..."</span>, <span class="s1">"evidence"</span>: <span class="s1">"..."</span>,
+      <span class="s1">"article"</span>: <span class="s1">"6(1)"</span>, <span class="s1">"risk"</span>: <span class="s1">"Very High"</span>, <span class="s1">"priority"</span>: <span class="s1">""</span>,
+      <span class="s1">"status"</span>: <span class="s1">"Not Started"</span>, <span class="s1">"workflow_state"</span>: <span class="s1">"In Progress"</span>,
+      <span class="s1">"owner"</span>: <span class="s1">""</span>, <span class="s1">"note"</span>: <span class="s1">""</span>, <span class="s1">"clickup_url"</span>: <span class="s1">""</span>,
+      <span class="s1">"updated_at"</span>: <span class="s1">"2026-08-11T02:46:23.251+00:00"</span>
+    }
+  ]
+}</pre>
+      </div>
+
+      <!-- /items/{no} -->
+      <div id="ep-item" class="anchor-offset bg-white rounded-xl border border-slate-200 p-5 mb-4">
+        <h3 class="font-bold text-slate-800 mb-1"><span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-green-100 text-green-700 align-middle mr-1">GET</span><code class="text-sm">/api/v1/items/{no}</code></h3>
+        <p class="text-xs text-slate-500 mb-3">Scope: <code class="bg-slate-100 px-1 rounded">items:read</code> · รับ query <code class="bg-slate-100 px-1 rounded">?lang=en</code> ได้เหมือนกับ /items · ข้อที่ไม่มีอยู่คืน <code class="bg-slate-100 px-1 rounded">404 item_not_found</code></p>
+        <pre>curl -H <span class="s1">"Authorization: Bearer $TOKEN"</span> \
+  <span class="k1">https://itgrmrbn.vercel.app/api/v1/items/15?lang=en</span>
+
+{ <span class="s1">"no"</span>: <span class="n1">15</span>, <span class="s1">"name"</span>: <span class="s1">"Account and access permission approval for important systems"</span>, <span class="s1">"..."</span>: <span class="s1">"..."</span> }</pre>
+      </div>
+
+      <!-- /items/{no}/history -->
+      <div id="ep-history" class="anchor-offset bg-white rounded-xl border border-slate-200 p-5 mb-4">
+        <h3 class="font-bold text-slate-800 mb-1"><span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-green-100 text-green-700 align-middle mr-1">GET</span><code class="text-sm">/api/v1/items/{no}/history</code></h3>
+        <p class="text-xs text-slate-500 mb-3">Scope: <code class="bg-slate-100 px-1 rounded">items:read</code> + <code class="bg-slate-100 px-1 rounded">history:read</code> — token ส่วนใหญ่ไม่มี scope นี้เป็นค่าเริ่มต้น เพราะความเห็นในไทม์ไลน์อาจพูดถึงชื่อคนและปัญหาที่ยังไม่เสร็จตรง ๆ ต้องขอเพิ่มจาก admin</p>
+        <pre>curl -H <span class="s1">"Authorization: Bearer $TOKEN"</span> \
+  <span class="k1">https://itgrmrbn.vercel.app/api/v1/items/1/history</span>
+
+{
+  <span class="s1">"item_no"</span>: <span class="n1">1</span>,
+  <span class="s1">"events"</span>: [
+    { <span class="s1">"from_state"</span>: <span class="s1">"Not Started"</span>, <span class="s1">"to_state"</span>: <span class="s1">"Pending Review"</span>,
+      <span class="s1">"comment"</span>: <span class="k1">null</span>, <span class="s1">"created_at"</span>: <span class="s1">"..."</span>, <span class="s1">"actor_name"</span>: <span class="s1">"..."</span> }
+  ],
+  <span class="s1">"evidence"</span>: [
+    { <span class="s1">"file_name"</span>: <span class="s1">"security-policy-v2.pdf"</span>, <span class="s1">"uploaded_at"</span>: <span class="s1">"..."</span>, <span class="s1">"uploaded_by_name"</span>: <span class="s1">"..."</span> }
+  ]
+}</pre>
+        <p class="text-xs text-amber-600 mt-2 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">⚠️ ไม่มีลิงก์ดาวน์โหลดไฟล์หลักฐานใน response — เห็นได้แค่ชื่อไฟล์ ไม่สามารถดึงตัวไฟล์ผ่าน API นี้ได้</p>
+      </div>
+
+      <!-- /summary -->
+      <div id="ep-summary" class="anchor-offset bg-white rounded-xl border border-slate-200 p-5 mb-4">
+        <h3 class="font-bold text-slate-800 mb-1"><span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-green-100 text-green-700 align-middle mr-1">GET</span><code class="text-sm">/api/v1/summary</code></h3>
+        <p class="text-xs text-slate-500 mb-3">Scope: <code class="bg-slate-100 px-1 rounded">summary:read</code> · รับ <code class="bg-slate-100 px-1 rounded">?cat=N</code> เพื่อดูเฉพาะหมวด (จะไม่มี <code class="bg-slate-100 px-1 rounded">by_category</code> ในกรณีนี้) · ตัวเลขคำนวณด้วยตรรกะเดียวกับแท็บ Overview เป๊ะ ไม่มีทางไม่ตรงกัน</p>
+        <pre>curl -H <span class="s1">"Authorization: Bearer $TOKEN"</span> \
+  <span class="k1">https://itgrmrbn.vercel.app/api/v1/summary</span>
+
+{
+  <span class="s1">"overall"</span>: { <span class="s1">"progress_pct"</span>: <span class="n1">42</span>, <span class="s1">"grade"</span>: <span class="s1">"C"</span>, <span class="s1">"item_count"</span>: <span class="n1">96</span> },
+  <span class="s1">"by_category"</span>: [
+    { <span class="s1">"no"</span>: <span class="n1">1</span>, <span class="s1">"name_th"</span>: <span class="s1">"..."</span>, <span class="s1">"name_en"</span>: <span class="s1">"..."</span>,
+      <span class="s1">"short_th"</span>: <span class="s1">"การกำกับดูแลความปลอดภัยสารสนเทศ"</span>, <span class="s1">"short_en"</span>: <span class="s1">"Security Governance"</span>,
+      <span class="s1">"item_count"</span>: <span class="n1">12</span>, <span class="s1">"progress_pct"</span>: <span class="n1">58</span>, <span class="s1">"grade"</span>: <span class="s1">"B"</span> }
+    <span class="c1">// ... ครบ 8 หมวด</span>
+  ],
+  <span class="s1">"by_status"</span>: { <span class="s1">"Not Started"</span>: <span class="n1">20</span>, <span class="s1">"In Progress"</span>: <span class="n1">15</span>, <span class="s1">"Compliant"</span>: <span class="n1">50</span>, <span class="s1">"Partial"</span>: <span class="n1">8</span>, <span class="s1">"Not Compliant"</span>: <span class="n1">3</span> },
+  <span class="s1">"by_risk"</span>: { <span class="s1">"Very High"</span>: <span class="n1">28</span>, <span class="s1">"High"</span>: <span class="n1">32</span>, <span class="s1">"Middle"</span>: <span class="n1">24</span>, <span class="s1">"Low"</span>: <span class="n1">12</span> },
+  <span class="s1">"by_workflow_state"</span>: { <span class="s1">"..."</span>: <span class="s1">"..."</span> },
+  <span class="s1">"very_high_risk_not_started"</span>: <span class="n1">7</span>
+}</pre>
+      </div>
+    </section>
+
+    <!-- ===================== SCOPES ===================== -->
+    <section id="scopes" class="anchor-offset">
+      <h2 class="text-xl font-bold text-blue-800 mb-3">🎫 Scopes</h2>
+      <div class="bg-white rounded-xl border border-slate-200 p-5">
+        <p class="text-sm text-slate-600 mb-3">Token แต่ละใบมีสิทธิ์แยกเป็นชิ้น ๆ — ไม่ใช่ all-or-nothing เลือกได้ตอนออก token ในแท็บ Admin</p>
+        <table class="w-full text-left text-sm">
+          <thead><tr class="text-xs text-slate-500"><th class="py-1.5">Scope</th><th class="py-1.5">ให้สิทธิ์อะไร</th><th class="py-1.5">ค่าเริ่มต้น</th></tr></thead>
+          <tbody class="divide-y divide-slate-100">
+            <tr><td class="py-2 font-mono text-xs">items:read</td><td class="py-2 text-xs">อ่านรายการและรายละเอียดข้อกำหนด (/items, /items/{no})</td><td class="py-2"><span class="text-[10px] px-1.5 py-0.5 rounded bg-green-100 text-green-700">✓ ติดมาให้</span></td></tr>
+            <tr><td class="py-2 font-mono text-xs">summary:read</td><td class="py-2 text-xs">อ่านตัวเลขสรุป/ความคืบหน้า (/summary)</td><td class="py-2"><span class="text-[10px] px-1.5 py-0.5 rounded bg-green-100 text-green-700">✓ ติดมาให้</span></td></tr>
+            <tr><td class="py-2 font-mono text-xs">history:read</td><td class="py-2 text-xs">อ่านความเห็นและไทม์ไลน์ workflow (/items/{no}/history)</td><td class="py-2"><span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">ต้องขอเพิ่ม</span></td></tr>
+          </tbody>
+        </table>
+        <p class="text-xs text-slate-400 mt-3">ให้เท่าที่จำเป็นเสมอ — ถ้าเครื่องมือของต้นแค่ต้องรายงานความคืบหน้า ไม่ต้องมี history:read เลย</p>
+      </div>
+    </section>
+
+    <!-- ===================== ERRORS ===================== -->
+    <section id="errors" class="anchor-offset">
+      <h2 class="text-xl font-bold text-blue-800 mb-3">⚠️ รูปแบบ Error</h2>
+      <div class="bg-white rounded-xl border border-slate-200 p-5">
+        <p class="text-sm text-slate-600 mb-3">ทุก error ตอบกลับรูปแบบเดียวกัน มี <code class="bg-slate-100 px-1 rounded text-xs">code</code> ให้เช็คด้วยโปรแกรมได้ ไม่ต้อง parse ข้อความ</p>
+        <pre><span class="s1">{ "error": { "code": "invalid_filter", "message": "\"status=Bogus\" is not a valid value for status.",
+             "param": "status", "allowed_values": ["Not Started","In Progress","Compliant","Partial","Not Compliant"] } }</span></pre>
+        <table class="w-full text-left text-sm mt-3">
+          <thead><tr class="text-xs text-slate-500"><th class="py-1.5">HTTP</th><th class="py-1.5">code</th><th class="py-1.5">ความหมาย</th></tr></thead>
+          <tbody class="divide-y divide-slate-100 text-xs">
+            <tr><td class="py-1.5"><span class="px-1.5 py-0.5 rounded bg-red-100 text-red-700 font-bold">400</span></td><td class="py-1.5 font-mono">invalid_filter / invalid_item_no</td><td class="py-1.5">พารามิเตอร์ผิด — ดู <code class="bg-slate-100 px-1 rounded">allowed_values</code> ประกอบ</td></tr>
+            <tr><td class="py-1.5"><span class="px-1.5 py-0.5 rounded bg-red-100 text-red-700 font-bold">401</span></td><td class="py-1.5 font-mono">missing_token / invalid_token / token_expired</td><td class="py-1.5">ไม่มี header, token ผิด, ถูกเพิกถอน, หรือหมดอายุ</td></tr>
+            <tr><td class="py-1.5"><span class="px-1.5 py-0.5 rounded bg-red-100 text-red-700 font-bold">403</span></td><td class="py-1.5 font-mono">insufficient_scope</td><td class="py-1.5">token ไม่มี scope ที่ endpoint นี้ต้องการ (ดู <code class="bg-slate-100 px-1 rounded">required_scopes</code>)</td></tr>
+            <tr><td class="py-1.5"><span class="px-1.5 py-0.5 rounded bg-red-100 text-red-700 font-bold">404</span></td><td class="py-1.5 font-mono">item_not_found</td><td class="py-1.5">ไม่มีข้อกำหนดเลขนี้ (มีแค่ 1–96)</td></tr>
+            <tr><td class="py-1.5"><span class="px-1.5 py-0.5 rounded bg-red-100 text-red-700 font-bold">429</span></td><td class="py-1.5 font-mono">rate_limited</td><td class="py-1.5">ยิงถี่เกินไป — ดู header <code class="bg-slate-100 px-1 rounded">Retry-After</code></td></tr>
+            <tr><td class="py-1.5"><span class="px-1.5 py-0.5 rounded bg-red-100 text-red-700 font-bold">500</span></td><td class="py-1.5 font-mono">internal_error</td><td class="py-1.5">ฝั่งเซิร์ฟเวอร์มีปัญหา ลองใหม่ได้ ถ้าเกิดซ้ำแจ้ง admin</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===================== RATE LIMIT ===================== -->
+    <section id="ratelimit" class="anchor-offset">
+      <h2 class="text-xl font-bold text-blue-800 mb-3">⏱️ Rate limit</h2>
+      <div class="bg-white rounded-xl border border-slate-200 p-5 text-sm text-slate-600 leading-relaxed">
+        <p>จำกัด <b>60 requests/นาที ต่อ token</b> เกินแล้วได้ <code class="bg-slate-100 px-1 rounded text-xs">429</code> พร้อม header <code class="bg-slate-100 px-1 rounded text-xs">Retry-After: 60</code></p>
+        <p class="mt-2 text-xs text-slate-400">ถ้าทำ automation ที่ต้องดึงข้อมูลบ่อย ๆ (เช่นเช็คทุกนาที) แนะนำใช้ <code class="bg-slate-100 px-1 rounded">updated_since</code> ใน /items แทนการดึงทั้งหมดซ้ำทุกครั้ง</p>
+      </div>
+    </section>
+
+    <!-- ===================== VIBE ===================== -->
+    <section id="vibe" class="anchor-offset">
+      <h2 class="text-xl font-bold text-blue-800 mb-3">💬 ถามแบบ Vibe คืออะไร</h2>
+      <div class="bg-white rounded-xl border border-slate-200 p-5">
+        <p class="text-sm text-slate-600 mb-4 leading-relaxed">
+          API นี้ไม่มี AI ของตัวเอง — ไม่ต้องมีก็ได้ เพราะ <code class="bg-slate-100 px-1 rounded text-xs">/meta</code> ให้ข้อมูลพอที่ <b>LLM ฝั่งที่เรียกใช้</b> (Claude, GPT, หรือโมเดลไหนก็ได้) แปลงคำถามภาษาคนเป็น query เองได้ทันที นี่คือตัวอย่างจริงที่เพิ่งทำให้ดูตอนทดสอบระบบ:
+        </p>
+        <div class="space-y-3">
+          <div class="flex gap-3 items-start">
+            <div class="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">1</div>
+            <div class="text-sm"><b>คำถามจากคน:</b> <span class="text-slate-600">"หมวดไหนยังแดงอยู่บ้าง"</span></div>
+          </div>
+          <div class="flex gap-3 items-start">
+            <div class="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">2</div>
+            <div class="text-sm"><b>AI เช็ค /meta</b> — เห็นว่า "แดง" ใน context นี้แปลว่า risk สูงและยังไม่เริ่ม จากตัวอย่างคำถามที่ /meta ให้มา</div>
+          </div>
+          <div class="flex gap-3 items-start">
+            <div class="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">3</div>
+            <div class="text-sm"><b>AI ประกอบ request เอง:</b><br><code class="text-xs bg-slate-900 text-green-300 px-2 py-1 rounded inline-block mt-1">GET /items?risk=Very High&amp;status=Not Started</code></div>
+          </div>
+          <div class="flex gap-3 items-start">
+            <div class="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">4</div>
+            <div class="text-sm"><b>ตอบกลับเป็นภาษาคน:</b> <span class="text-slate-600">"มี 28 ข้อที่ความเสี่ยงสูงมากและยังไม่เริ่มทำเลย เช่นข้อ 1 การจัดทำระเบียบความมั่นคงปลอดภัยด้าน IT..."</span></div>
+          </div>
+        </div>
+        <p class="text-xs text-slate-400 mt-4 border-t border-slate-100 pt-3">ต้นไม่ต้องเขียนโค้ด mapping "แดง" → risk=Very High เอง — AI ที่อ่าน /meta แล้วเดาความหมายจากตัวอย่างคำถามได้เลย ยิ่งคำถามซับซ้อนเท่าไหร่ ยิ่งเห็นประโยชน์ของแนวทางนี้</p>
+      </div>
+    </section>
+
+    <!-- ===================== AI AGENTIC ===================== -->
+    <section id="ai-agentic" class="anchor-offset">
+      <h2 class="text-xl font-bold text-blue-800 mb-4">🤖 ต่อกับ AI Agentic</h2>
+
+      <div id="ai-n8n" class="anchor-offset bg-white rounded-xl border border-slate-200 p-5 mb-4">
+        <h3 class="font-bold text-slate-800 mb-2 flex items-center gap-2"><span class="text-lg">⚙️</span> n8n</h3>
+        <ol class="list-decimal pl-5 text-sm text-slate-600 space-y-1.5">
+          <li>เพิ่ม node <b>HTTP Request</b></li>
+          <li>Method: <code class="bg-slate-100 px-1 rounded text-xs">GET</code>, URL: <code class="bg-slate-100 px-1 rounded text-xs">https://itgrmrbn.vercel.app/api/v1/summary</code></li>
+          <li>Authentication → <b>Generic Credential Type</b> → <b>Header Auth</b> → สร้าง credential ใหม่: Name = <code class="bg-slate-100 px-1 rounded text-xs">Authorization</code>, Value = <code class="bg-slate-100 px-1 rounded text-xs">Bearer itgr_live_...</code></li>
+          <li>ถ้าจะให้ AI Agent node ใน n8n ตัดสินใจเองว่าจะเรียก endpoint ไหน ให้ดึงผล <code class="bg-slate-100 px-1 rounded text-xs">/meta</code> มาใส่ใน system prompt ของ AI Agent node ก่อน แล้วให้มันสร้าง URL เองตามตัวอย่าง</li>
+          <li>ต่อผลลัพธ์เข้า node ส่ง LINE/Slack/อีเมล เพื่อทำเป็นรายงานประจำวันอัตโนมัติได้เลย</li>
+        </ol>
+      </div>
+
+      <div id="ai-claude" class="anchor-offset bg-white rounded-xl border border-slate-200 p-5 mb-4">
+        <h3 class="font-bold text-slate-800 mb-2 flex items-center gap-2"><span class="text-lg">✳️</span> Claude (Claude Code / Projects / Custom instructions)</h3>
+        <p class="text-sm text-slate-600 mb-2">วิธีที่ตรงที่สุด: บอก Claude ตรง ๆ ว่ามี API นี้อยู่ พร้อม token แล้วให้มันดึง <code class="bg-slate-100 px-1 rounded text-xs">/meta</code> เอง — Claude ที่มีเครื่องมือเรียกเว็บ (เช่น WebFetch) ประกอบ query และสรุปคำตอบให้เป็นภาษาคนได้ทันที เหมือนตัวอย่างในหัวข้อ "ถามแบบ Vibe" ด้านบน ซึ่งเป็นวิธีที่ใช้ทดสอบ API ชุดนี้เองจริง ๆ ตอนพัฒนา</p>
+        <pre><span class="c1">// ตัวอย่าง prompt ที่ใช้ได้เลย</span>
+<span class="s1">"เรียก GET https://itgrmrbn.vercel.app/api/v1/meta
+ด้วย Authorization: Bearer itgr_live_xxxxx แล้วบอกฉันว่าตอนนี้
+หมวดไหนของ ITGR ยังมีข้อความเสี่ยงสูงมากที่ยังไม่เริ่มทำบ้าง"</span></pre>
+      </div>
+
+      <div id="ai-gpt" class="anchor-offset bg-white rounded-xl border border-slate-200 p-5 mb-4">
+        <h3 class="font-bold text-slate-800 mb-2 flex items-center gap-2"><span class="text-lg">🧩</span> Custom GPT / OpenAI Function Calling</h3>
+        <p class="text-sm text-slate-600 mb-2">ยังไม่มีไฟล์ <code class="bg-slate-100 px-1 rounded text-xs">openapi.json</code> ให้ import อัตโนมัติ (อยู่ในแผนถัดไป) — ระหว่างนี้ทำได้ 2 ทาง:</p>
+        <ul class="list-disc pl-5 text-sm text-slate-600 space-y-1.5">
+          <li><b>ทางลัด:</b> วางผลลัพธ์ของ <code class="bg-slate-100 px-1 rounded text-xs">/meta</code> ทั้งก้อนไว้ใน system instructions ของ Custom GPT แล้วสอนให้มันเรียก endpoint ผ่าน Actions ด้วย base URL + Bearer auth</li>
+          <li><b>ทางที่ยืดหยุ่นกว่า:</b> ประกาศ 1 action แบบ generic (path/query เป็น parameter) แล้วให้โมเดลกรอกเองตามที่เรียนรู้จาก /meta</li>
+        </ul>
+      </div>
+
+      <div id="ai-line" class="anchor-offset bg-white rounded-xl border border-slate-200 p-5">
+        <h3 class="font-bold text-slate-800 mb-2 flex items-center gap-2"><span class="text-lg">💚</span> LINE Bot</h3>
+        <p class="text-sm text-slate-600">LINE bot เองไม่มี Vibe-parsing ในตัว — วิธีที่ตรงไปตรงมาที่สุดคือให้ webhook ของ LINE ส่งข้อความผู้ใช้ต่อไปให้ LLM (ผ่าน n8n หรือ Cloud Function) พร้อมแนบผล <code class="bg-slate-100 px-1 rounded text-xs">/meta</code> เป็น context จากนั้นให้ LLM เรียก External Read API แล้วส่งคำตอบกลับ LINE — จริง ๆ แล้ว pattern นี้เหมือนกับ n8n ด้านบนทุกประการ เพียงแค่ trigger เป็น LINE webhook แทน cron</p>
+      </div>
+    </section>
+
+    <!-- ===================== OTHER APPS ===================== -->
+    <section id="other-apps" class="anchor-offset">
+      <h2 class="text-xl font-bold text-blue-800 mb-3">🔗 เชื่อมกับแอปอื่น (ไม่ใช่ AI)</h2>
+      <div class="bg-white rounded-xl border border-slate-200 p-5 text-sm text-slate-600 leading-relaxed space-y-2">
+        <p>API นี้เป็น REST ธรรมดา (GET + JSON) — เครื่องมือไหนที่ยิง HTTP request พร้อมใส่ header ได้ก็ใช้ได้หมด ไม่จำเป็นต้องเป็น AI:</p>
+        <ul class="list-disc pl-5 space-y-1">
+          <li><b>Google Sheets / Apps Script</b> — <code class="bg-slate-100 px-1 rounded text-xs">UrlFetchApp.fetch()</code> ดึงข้อมูลเข้าสเปรดชีตตามรอบเวลา</li>
+          <li><b>Make (Integromat) / Zapier</b> — module "HTTP" หรือ "Webhooks" ตั้ง Header Authorization เหมือน n8n</li>
+          <li><b>Power BI / Looker Studio</b> — เชื่อมเป็น Web/REST data source เพื่อทำ dashboard เพิ่มเติม</li>
+          <li><b>สคริปต์ของทีมเอง</b> (Python/Node) — ดูตัวอย่างโค้ดด้านล่าง</li>
+        </ul>
+        <div class="grid md:grid-cols-2 gap-3 mt-3">
+          <div>
+            <div class="text-xs font-bold text-slate-500 mb-1">JavaScript / Node.js</div>
+            <pre>const res = <span class="k1">await fetch</span>(
+  <span class="s1">'https://itgrmrbn.vercel.app/api/v1/summary'</span>,
+  { headers: { Authorization: <span class="s1">'Bearer '</span> + TOKEN } }
+);
+const data = <span class="k1">await</span> res.json();
+console.log(data.overall.progress_pct);</pre>
+          </div>
+          <div>
+            <div class="text-xs font-bold text-slate-500 mb-1">Python</div>
+            <pre><span class="k1">import</span> requests
+r = requests.get(
+  <span class="s1">"https://itgrmrbn.vercel.app/api/v1/summary"</span>,
+  headers={<span class="s1">"Authorization"</span>: <span class="s1">f"Bearer {TOKEN}"</span>}
+)
+print(r.json()[<span class="s1">"overall"</span>][<span class="s1">"progress_pct"</span>])</pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== SECURITY ===================== -->
+    <section id="security" class="anchor-offset">
+      <h2 class="text-xl font-bold text-blue-800 mb-3">🛡️ ความปลอดภัย</h2>
+      <div class="bg-amber-50 border border-amber-200 rounded-xl p-5 text-sm text-amber-800 leading-relaxed space-y-2">
+        <ul class="list-disc pl-5 space-y-1.5">
+          <li><b>อย่า commit token ลง git</b> หรือวางในที่สาธารณะ — เก็บใน environment variable / credential store ของเครื่องมือที่ใช้เสมอ</li>
+          <li>Token <b>ไม่หมดอายุเอง</b> — ถ้าเลิกใช้เครื่องมือไหนแล้ว ให้เข้าไปกดเพิกถอนที่แท็บ Admin ทันที อย่าปล่อยค้าง</li>
+          <li>ให้ scope เท่าที่จำเป็น — ส่วนใหญ่ไม่ต้องมี <code class="bg-white/60 px-1 rounded text-xs">history:read</code></li>
+          <li>ถ้าสงสัยว่า token หลุด กด <b>Revoked</b> ก่อนแล้วค่อยสืบสวน — เพิกถอนมีผลทันที ไม่ต้อง deploy</li>
+          <li>API นี้ <b>อ่านอย่างเดียว</b> ต่อให้ token หลุดก็แก้ไข/ลบข้อมูลอะไรในระบบไม่ได้</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ===================== FAQ ===================== -->
+    <section id="faq" class="anchor-offset">
+      <h2 class="text-xl font-bold text-blue-800 mb-3">❓ คำถามที่พบบ่อย</h2>
+      <div class="space-y-3">
+        <div class="bg-white rounded-xl border border-slate-200 p-4">
+          <div class="font-semibold text-sm text-slate-700">ทำไม token ของฉันได้ 403 ตลอด?</div>
+          <p class="text-xs text-slate-500 mt-1">เช็ค <code class="bg-slate-100 px-1 rounded">error.required_scopes</code> ใน response — token ใบนั้นอาจไม่มี scope ที่ endpoint ต้องการ (พบบ่อยกับ /items/{no}/history ที่ต้องมี history:read เพิ่ม) ให้ admin เพิ่ม scope จากแท็บ Admin</p>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 p-4">
+          <div class="font-semibold text-sm text-slate-700">แก้ owner/note/status ผ่าน API นี้ได้ไหม?</div>
+          <p class="text-xs text-slate-500 mt-1">ไม่ได้ — API นี้อ่านอย่างเดียวโดยตั้งใจ การแก้ไขและ workflow อนุมัติต้องทำผ่านแดชบอร์ดโดยคนจริงเท่านั้น</p>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 p-4">
+          <div class="font-semibold text-sm text-slate-700">ทำไม response ใช้เวลานานกว่าที่คิด?</div>
+          <p class="text-xs text-slate-500 mt-1">ทุก request บันทึกลง audit log <b>ก่อน</b> ส่งผลลัพธ์กลับเสมอ (ตั้งใจออกแบบให้เป็นแบบนี้เพื่อไม่ให้การบันทึกหลุดหาย) เพิ่มเวลาราวหลักสิบมิลลิวินาที ถือว่าคุ้มกับการมี audit trail ที่ครบ 100%</p>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 p-4">
+          <div class="font-semibold text-sm text-slate-700">ดาวน์โหลดไฟล์หลักฐานผ่าน API นี้ได้ไหม?</div>
+          <p class="text-xs text-slate-500 mt-1">ไม่ได้ — /items/{no}/history บอกแค่ชื่อไฟล์ ไม่มีลิงก์ดาวน์โหลด ต้องเข้าแดชบอร์ดแล้วล็อกอินด้วย PIN เพื่อดูไฟล์จริง</p>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 p-4">
+          <div class="font-semibold text-sm text-slate-700">ต้อง scope อะไรบ้างถ้าจะทำแดชบอร์ดสรุปภาพรวมอย่างเดียว?</div>
+          <p class="text-xs text-slate-500 mt-1"><code class="bg-slate-100 px-1 rounded">summary:read</code> อย่างเดียวก็พอ ไม่ต้องมี items:read เลยถ้าไม่ต้องดูรายข้อ</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="text-center text-xs text-slate-400 pt-6 border-t border-slate-200">
+      มีคำถามเพิ่มเติมหรือพบปัญหาการใช้งาน ติดต่อ admin ของ ITGR Dashboard · เอกสารนี้สอดคล้องกับ API v1.0
+    </div>
+
+  </main>
+</div>
+
+</body>
+</html>

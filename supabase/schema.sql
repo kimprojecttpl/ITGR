@@ -207,7 +207,108 @@ alter table item_workflow_events enable row level security;
 -- Same default-deny posture as every other table — service role (BFF) only.
 
 -- =============================================================================
--- v1.5: FY2026 alignment.
+-- v1.5: Thai translations for the checklist content, enabling the TH/EN
+-- language toggle in the dashboard.
+--
+-- Appended (not editing the original CREATE TABLE above) per CLAUDE.md's
+-- migration convention — safe to re-run.
+--
+-- Design note: the English columns stay the source of truth. `*_th` holds a
+-- translation that may be empty; the UI falls back to the English column
+-- whenever a `*_th` value is blank, so a partial translation never blanks out
+-- the screen. `cat_short_th` already existed since v1.0 and is unchanged.
+-- =============================================================================
+alter table checklist_items add column if not exists category_th text not null default '';
+alter table checklist_items add column if not exists name_th     text not null default '';
+alter table checklist_items add column if not exists content_th  text not null default '';
+alter table checklist_items add column if not exists standard_th text not null default '';
+alter table checklist_items add column if not exists evidence_th text not null default '';
+alter table checklist_items add column if not exists qtype_th    text not null default '';
+
+-- ---------------------------------------------------------------------------
+-- v1.5b: Thai translations for the Appendix 1-5 tables.
+--
+-- `data_th` mirrors `data` row-for-row and key-for-key; the client swaps the
+-- whole array when Thai is active, so the shapes must stay identical. Values
+-- that drive badge colours (level / type / edr / sysctrl) are deliberately
+-- kept as the English key inside data_th, and the client renders a localized
+-- label for them — translating the key itself would break the colour lookup.
+--
+-- `note` is new because the legacy `note` field on Appendix 2 was being
+-- dropped at seed time and never reached the UI at all.
+-- ---------------------------------------------------------------------------
+alter table appendices add column if not exists note    text  not null default '';
+alter table appendices add column if not exists note_th text  not null default '';
+alter table appendices add column if not exists data_th jsonb not null default '[]'::jsonb;
+
+-- =============================================================================
+-- v1.6: External Read API (ITGR Query API v1) — see docs/PRD-external-api.md.
+--
+-- Bearer-token auth for /api/v1/*, completely separate from the PIN/session
+-- login in lib/auth.js: different table, different secret (API_TOKEN_PEPPER,
+-- never PIN_PEPPER), different cookie-free transport. No endpoint under
+-- /api/v1/* can write — this migration backs a read-only surface by design.
+-- =============================================================================
+
+-- ---------------------------------------------------------------------------
+-- api_tokens: one row per issued external-API credential.
+--
+-- token_hash uses the same HMAC-SHA256(token, pepper) construction as
+-- users.pin_hash (see lib/pin.js) for the same reason — an indexed O(1)
+-- equality lookup without ever storing the credential itself. Decision D2
+-- (2026-08-27): tokens do not expire by default; `expires_at` stays nullable
+-- for the cases where a temporary token is wanted. Because nothing forces a
+-- token to die on its own, `last_used_at` is load-bearing — it is the only
+-- signal that lets an admin notice a forgotten, still-live credential.
+-- ---------------------------------------------------------------------------
+create table if not exists api_tokens (
+  id           uuid primary key default gen_random_uuid(),
+  name         text not null,             -- "n8n morning brief", "LINE bot" — human label, not a secret
+  token_hash   text not null,             -- HMAC-SHA256(token, API_TOKEN_PEPPER), hex — see lib/apiToken.js
+  prefix       text not null,             -- first ~18 chars of the issued token, for admin-UI identification only
+  scopes       text[] not null default '{items:read,summary:read}',
+                                           -- valid values: items:read, summary:read, history:read (lib/apiToken.js)
+                                           -- history:read is deliberately absent from the default (decision D3) —
+                                           -- workflow comments can name people and issues plainly, so a token has
+                                           -- to opt into reading them, not receive it for free.
+  active       boolean not null default true,
+  expires_at   timestamptz,               -- null = does not expire (decision D2)
+  last_used_at timestamptz,
+  created_by   uuid references users (id) on delete set null,
+  created_at   timestamptz not null default now()
+);
+
+create unique index if not exists api_tokens_token_hash_key on api_tokens (token_hash);
+
+-- ---------------------------------------------------------------------------
+-- api_request_log: append-only audit trail for every /api/v1/* call,
+-- including rejected ones (bad/expired/rate-limited token). Never stores the
+-- token value itself — only the token_id it resolved to, if any.
+--
+-- Doubles as the storage for the per-token rate limit: a Vercel serverless
+-- function has no memory shared across invocations, so "requests in the
+-- last 60 seconds" is answered by counting rows here rather than an
+-- in-process counter.
+-- ---------------------------------------------------------------------------
+create table if not exists api_request_log (
+  id          bigint generated always as identity primary key,
+  token_id    uuid references api_tokens (id) on delete set null,
+  path        text not null,
+  query       jsonb not null default '{}'::jsonb,
+  status      int not null,
+  duration_ms int,
+  created_at  timestamptz not null default now()
+);
+
+create index if not exists api_request_log_token_created_idx on api_request_log (token_id, created_at desc);
+create index if not exists api_request_log_created_idx on api_request_log (created_at desc);
+
+alter table api_tokens      enable row level security;
+alter table api_request_log enable row level security;
+-- Same default-deny posture as every other table — service role (BFF) only.
+
+-- =============================================================================
+-- v1.7: FY2026 alignment.
 --
 -- The FY2026 workbook (Ver.1, 3 Apr 2026) ships two things FY2025 did not:
 -- AutoCorp's completed self-assessment, and Marubeni's own scoring formulas.
