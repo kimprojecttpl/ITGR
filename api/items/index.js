@@ -7,6 +7,8 @@ const STATUS_COLS = "status, owner, note, clickup_url, workflow_state, updated_a
 // Supabase migrations independently, and a hard failure here would take the
 // whole dashboard down for every role until the SQL ran.
 const STATUS_COLS_V17 = `${STATUS_COLS}, self_assessment, self_assessment_note`;
+// v1.9 (proposed) — Box.com Remark Sync columns. Same reasoning, one more tier.
+const STATUS_COLS_V19 = `${STATUS_COLS_V17}, box_url, box_remark, box_remark_by, box_remark_at, box_remark_source`;
 const UNDEFINED_COLUMN = "42703";
 
 async function loadItems(supabase) {
@@ -16,7 +18,10 @@ async function loadItems(supabase) {
       .select(`*, item_status(${cols})`)
       .order("no", { ascending: true });
 
-  let { data, error } = await query(STATUS_COLS_V17);
+  let { data, error } = await query(STATUS_COLS_V19);
+  if (error?.code === UNDEFINED_COLUMN) {
+    ({ data, error } = await query(STATUS_COLS_V17));
+  }
   if (error?.code === UNDEFINED_COLUMN) {
     ({ data, error } = await query(STATUS_COLS));
   }
@@ -74,6 +79,12 @@ export default async function handler(req, res) {
       workflowState: status?.workflow_state ?? "Not Started",
       selfAssessment: status?.self_assessment ?? "",
       selfAssessmentNote: status?.self_assessment_note ?? "",
+      // v1.9 (proposed)
+      boxUrl: status?.box_url ?? "",
+      boxRemark: status?.box_remark ?? "",
+      boxRemarkBy: status?.box_remark_by ?? "",
+      boxRemarkAt: status?.box_remark_at ?? "",
+      boxRemarkSource: status?.box_remark_source ?? "",
     };
   });
 

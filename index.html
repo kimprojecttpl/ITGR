@@ -117,6 +117,10 @@ function canEditItem(){ return ME && (ME.role==='admin' || ME.role==='user'); }
 function canSubmit(){ return canEditItem(); }
 function canReview(){ return ME && (ME.role==='admin' || ME.role==='reviewer'); }
 function canApprove(){ return ME && (ME.role==='admin' || ME.role==='approver'); }
+// v1.9 (proposed) — `marubeni` is outside the internal workflow chain
+// entirely: it can't touch Owner/Evidence/status, only the Remark + a
+// manual Box sync trigger (PRD.md § 13.7).
+function canManageBoxRemark(){ return ME && (ME.role==='admin' || ME.role==='marubeni'); }
 
 let CATS = [];
 function rebuildCats(){
@@ -243,7 +247,8 @@ function roleLabel(r){
     user:t('ผู้เตรียมข้อมูล','User'),
     reviewer:t('ผู้ตรวจทาน','Reviewer'),
     approver:t('ผู้อนุมัติ','Approver'),
-    read_only:t('อ่านอย่างเดียว','Read-Only')
+    read_only:t('อ่านอย่างเดียว','Read-Only'),
+    marubeni:t('Marubeni (proposed)','Marubeni (proposed)')
   }[r] || r;
 }
 // Items waiting on the current user's action — drives the nav badge.
@@ -483,6 +488,7 @@ function tracker(){
     const owner=s.owner||"";
     const note=s.note||"";
     const clickupUrl=s.clickupUrl||"";
+    const boxUrl=s.boxUrl||"";
     const open=EXPANDED[it.no];
     const statusCell=`<span class="text-[11px] px-2 py-1 rounded-full font-medium inline-block ${STATUS_BG[st]}">${statusLabel(st)}</span>`
       +(['Pending Review','Pending Approval','Rejected'].includes(wf)
@@ -501,6 +507,14 @@ function tracker(){
         ${editable?`<input id="cu-${it.no}" value="${esc(clickupUrl)}" onchange="setField(${it.no},'clickupUrl',this.value)" placeholder="https://app.clickup.com/t/..." class="w-full text-sm border border-slate-300 rounded-lg px-2 py-1.5">`
           :`<div class="w-full text-sm text-slate-600">${esc(clickupUrl)||'<span class="text-slate-300">—</span>'}</div>`}
         ${clickupUrl?`<a href="${esc(clickupUrl)}" target="_blank" rel="noopener" title="${t('เปิดใน ClickUp','Open in ClickUp')}" class="shrink-0 text-xs px-2 py-1.5 rounded-lg bg-violet-100 hover:bg-violet-200 text-violet-700">\u{1F517}</a>`:''}
+      </div>`;
+    // v1.9 (proposed) — Box Folder link. Same edit rule as ClickUp (reference
+    // link, not compliance evidence): editable by user/admin, always, even
+    // when the item is workflow-locked.
+    const boxField=`<div class="flex gap-1.5 items-center mt-1">
+        ${editable?`<input value="${esc(boxUrl)}" onchange="setField(${it.no},'boxUrl',this.value)" placeholder="https://app.box.com/s/..." class="w-full text-sm border border-slate-300 rounded-lg px-2 py-1.5">`
+          :`<div class="w-full text-sm text-slate-600">${esc(boxUrl)||'<span class="text-slate-300">—</span>'}</div>`}
+        ${boxUrl?`<a href="${esc(boxUrl)}" target="_blank" rel="noopener" title="${t('เปิดใน Box','Open in Box')}" class="shrink-0 text-xs px-2 py-1.5 rounded-lg bg-sky-100 hover:bg-sky-200 text-sky-700">\u{1F4E6}</a>`:''}
       </div>`;
     return `<tbody class="border-b border-slate-100">
       <tr class="hover:bg-blue-50/40">
@@ -528,13 +542,15 @@ function tracker(){
             </div>
           </div>
         </div>
-        <div class="grid md:grid-cols-3 gap-3 mt-4 pt-3 border-t border-slate-200">
+        <div class="grid md:grid-cols-4 gap-3 mt-4 pt-3 border-t border-slate-200">
           <div><label class="text-xs font-bold text-slate-500">${t('ผู้รับผิดชอบ','Owner')}</label>${ownerField}</div>
           <div><label class="text-xs font-bold text-slate-500">${t('หมายเหตุ / หลักฐานอ้างอิง','Note · Evidence')}</label>${noteField}</div>
           <div><label class="text-xs font-bold text-slate-500">${t('งาน ClickUp','Task (ClickUp)')}</label>${clickupField}</div>
+          <div><label class="text-xs font-bold text-slate-500">${t('โฟลเดอร์ Box','Box Folder')} <span class="text-amber-500 font-normal">(proposed)</span></label>${boxField}</div>
         </div>
         ${locked&&editable?`<div class="text-[11px] text-amber-600 mt-2">\u{1F512} ${t('รายการนี้อนุมัติแล้ว — แก้ไข Owner/Evidence ไม่ได้จนกว่าจะกด "ส่งขออนุมัติใหม่" ด้านล่าง','This item is decided — Owner/Evidence are locked until you click "Request for Approval" below.')}</div>`:''}
         ${selfAssessmentPanel(it.no)}
+        ${boxRemarkPanel(it.no)}
         ${workflowPanel(it,wf)}
         <div class="mt-3 pt-3 border-t border-slate-200">
           <button onclick="toggleHistory(${it.no})" class="text-xs text-blue-600 hover:underline">${EXPANDED_HISTORY[it.no]?t('ซ่อนประวัติ','Hide history'):'\u{1F553} '+t('ดูประวัติ','View history')}</button>
@@ -595,6 +611,35 @@ function selfAssessmentPanel(no){
   </div>`;
 }
 
+// ---------- BOX.COM REMARK SYNC (v1.9, PROPOSED — not a live Box connection) ----------
+// Informational only: never writes `status`/`workflow_state` (PRD.md § 13.2,
+// decision D2) — same separation instinct as selfAssessmentPanel above.
+// Editable only by marubeni/admin (§ 13.7); everyone else sees it read-only.
+function boxRemarkPanel(no){
+  const s=STATE[no]||{};
+  const remark=s.boxRemark||'';
+  const by=s.boxRemarkBy||'';
+  const at=s.boxRemarkAt||'';
+  const src=s.boxRemarkSource||'';
+  const srcLabel=src==='box'?t('จาก Box comment','from a Box comment'):src==='app'?t('พิมพ์ในแอป','typed in-app'):'';
+  const manage=canManageBoxRemark();
+  if(!manage && !remark) return '';
+  return `<div class="mt-3 pt-3 border-t border-slate-200">
+    <div class="flex items-center gap-2 flex-wrap mb-1">
+      <span class="text-xs font-bold text-slate-500">${t('Remark จาก Box','Remark from Box')} <span class="text-amber-500 font-normal">(proposed)</span></span>
+      ${by||at?`<span class="text-[10px] text-slate-400">${esc(by)}${by&&at?' · ':''}${at?new Date(at).toLocaleString():''}${srcLabel?' · '+srcLabel:''}</span>`:''}
+    </div>
+    ${manage
+      ?`<textarea id="box-remark-${no}" rows="2" placeholder="${t('พิมพ์ remark เอง หรือรอดึงจาก Box comment (ยังไม่เชื่อมต่อจริง)','Type a remark, or wait for a pulled Box comment (not connected yet)')}" class="w-full text-sm border border-slate-300 rounded-lg px-2 py-1.5">${esc(remark)}</textarea>
+       <div class="flex gap-2 mt-1.5">
+         <button onclick="saveBoxRemark(${no})" class="text-xs px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white">${t('บันทึก Remark','Save Remark')}</button>
+         <button onclick="syncToBox(${no})" class="text-xs px-2.5 py-1 rounded-lg bg-sky-100 hover:bg-sky-200 text-sky-700">\u{1F4E4} ${t('Sync to Box','Sync to Box')}</button>
+       </div>
+       <div class="text-[10px] text-slate-400 mt-1">${t('ยังไม่มีการเชื่อมต่อ Box จริง — กด Sync to Box ตอนนี้จะขึ้น error ที่คาดไว้ (ดู PRD.md § 13.6)','Box is not connected yet — Sync to Box will return an expected error right now (see PRD.md § 13.6)')}</div>`
+      :`${remark?`<div class="text-sm text-slate-600 whitespace-pre-line bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">${esc(remark)}</div>`:''}`}
+  </div>`;
+}
+
 // Footnote under an expanded item. In English mode the reader is looking at
 // the authoritative ITGR wording; in Thai mode they are looking at an
 // unreviewed machine translation and must be told so — this is a compliance
@@ -611,7 +656,8 @@ function trackerRoleBanner(){
   const msg={
     reviewer:t('คุณเป็น Reviewer — ตรวจทานรายการที่ "รอตรวจทาน" ได้ (คลิกเปิดรายการ) แก้ไข Owner/Evidence/Task ไม่ได้','You are a Reviewer — you can review items in "Pending Review" (expand a row), but cannot edit Owner/Evidence/Task.'),
     approver:t('คุณเป็น Approver — ตัดสินรายการที่ "รออนุมัติ" ได้ (คลิกเปิดรายการ) แก้ไข Owner/Evidence/Task ไม่ได้','You are an Approver — you can decide items in "Pending Approval" (expand a row), but cannot edit Owner/Evidence/Task.'),
-    read_only:t('คุณมีสิทธิ์อ่านอย่างเดียว ไม่สามารถแก้ไขหรือดำเนินการใดๆ ได้','You have read-only access — nothing here can be edited or actioned.')
+    read_only:t('คุณมีสิทธิ์อ่านอย่างเดียว ไม่สามารถแก้ไขหรือดำเนินการใดๆ ได้','You have read-only access — nothing here can be edited or actioned.'),
+    marubeni:t('คุณเป็นบทบาท Marubeni (proposed) — ดูได้ทุกหน้า เขียน Remark และสั่ง Sync to Box ได้ (คลิกเปิดรายการ) แก้ไข Owner/Evidence/status ไม่ได้','You have the Marubeni role (proposed) — you can view everything, write a Remark, and trigger Sync to Box (expand a row), but cannot edit Owner/Evidence/status.')
   }[ME&&ME.role] || '';
   return msg?`<div class="bg-amber-50 border border-amber-200 text-amber-700 text-xs rounded-xl p-3 mb-4">${msg}</div>`:'';
 }
@@ -738,7 +784,7 @@ async function refreshItems(){
     const res=await fetchJSON('/api/items');
     ITEMS=res.items;
     STATE={};
-    ITEMS.forEach(it=>{ STATE[it.no]={status:it.status, owner:it.owner, note:it.note, clickupUrl:it.clickupUrl, workflowState:it.workflowState, selfAssessment:it.selfAssessment, selfAssessmentNote:it.selfAssessmentNote}; });
+    ITEMS.forEach(it=>{ STATE[it.no]={status:it.status, owner:it.owner, note:it.note, clickupUrl:it.clickupUrl, workflowState:it.workflowState, selfAssessment:it.selfAssessment, selfAssessmentNote:it.selfAssessmentNote, boxUrl:it.boxUrl, boxRemark:it.boxRemark, boxRemarkBy:it.boxRemarkBy, boxRemarkAt:it.boxRemarkAt, boxRemarkSource:it.boxRemarkSource}; });
     HISTORY={};
   }finally{ render(); }
 }
@@ -921,7 +967,7 @@ const API_SCOPE_LABELS = {
 };
 function adminView(){
   if(ADMIN_LOADING) return `<div class="mt-6 text-sm text-slate-400">${t('กำลังโหลด...','Loading...')}</div>`;
-  const roleOpt=(sel)=>['admin','user','reviewer','approver','read_only'].map(r=>`<option value="${r}" ${sel===r?'selected':''}>${r}</option>`).join('');
+  const roleOpt=(sel)=>['admin','user','reviewer','approver','read_only','marubeni'].map(r=>`<option value="${r}" ${sel===r?'selected':''}>${r}</option>`).join('');
   const userRows=ADMIN_USERS.map(u=>`
     <tr class="border-t border-slate-100 text-sm">
       <td class="px-3 py-2 font-medium text-slate-700">${esc(u.display_name)}</td>
@@ -1062,10 +1108,11 @@ async function adminDeleteUser(id,name){
 // ---------- interactions ----------
 function toggleRow(n){ EXPANDED[n]=!EXPANDED[n]; render(); }
 // STATE keys are camelCase; the PATCH API expects the raw DB column name
-// for the one field where those differ (clickupUrl -> clickup_url).
-const FIELD_API_KEY = { clickupUrl: 'clickup_url' };
+// for the fields where those differ (clickupUrl -> clickup_url, v1.9's
+// boxUrl -> box_url).
+const FIELD_API_KEY = { clickupUrl: 'clickup_url', boxUrl: 'box_url' };
 async function setField(n,k,v){
-  const prev = STATE[n] ? {...STATE[n]} : {status:"Not Started",owner:"",note:"",clickupUrl:"",workflowState:"Not Started"};
+  const prev = STATE[n] ? {...STATE[n]} : {status:"Not Started",owner:"",note:"",clickupUrl:"",boxUrl:"",workflowState:"Not Started"};
   STATE[n]=STATE[n]||{}; STATE[n][k]=v;
   // Mirrors the BFF's auto-bump so the badge doesn't lag until the next refetch.
   if(k!=='status' && STATE[n].status==='Not Started') STATE[n].status='In Progress';
@@ -1075,6 +1122,33 @@ async function setField(n,k,v){
   }catch(err){
     STATE[n]=prev; render();
     alert(t('บันทึกไม่สำเร็จ: ','Failed to save: ')+err.message);
+  }
+}
+// v1.9 (proposed) — Remark uses its own endpoint (marubeni/admin only,
+// never touches status/workflow_state) rather than the generic setField
+// PATCH, matching how the role is scoped server-side (§ 13.7).
+async function saveBoxRemark(n){
+  const el=document.getElementById('box-remark-'+n);
+  if(!el) return;
+  try{
+    const res = await fetchJSON('/api/items/'+n+'/box-remark', { method:'PATCH', body:{ remark: el.value } });
+    STATE[n]=STATE[n]||{};
+    STATE[n].boxRemark=el.value;
+    STATE[n].boxRemarkBy=res.box_remark_by||'';
+    STATE[n].boxRemarkAt=res.box_remark_at||'';
+    STATE[n].boxRemarkSource=res.box_remark_source||'app';
+    render();
+  }catch(err){
+    alert(t('บันทึก Remark ไม่สำเร็จ: ','Failed to save remark: ')+err.message);
+  }
+}
+async function syncToBox(n){
+  try{
+    await fetchJSON('/api/items/'+n+'/box-sync', { method:'POST' });
+    alert(t('ส่งไป Box สำเร็จ','Synced to Box'));
+  }catch(err){
+    // Expected right now — no Box Custom App is connected yet (§ 13.6).
+    alert(t('Sync to Box ไม่สำเร็จ (คาดไว้ — ยังไม่เชื่อมต่อ Box จริง): ','Sync to Box failed (expected — Box is not connected yet): ')+err.message);
   }
 }
 function clearFilters(){ FILTERS={cat:"",risk:"",pri:"",status:"",type:"",q:""}; render(); }
@@ -1120,7 +1194,7 @@ async function init(){
   DRIVE = driveRes.folders;
   APPX = appxRes.appendices;
   STATE = {};
-  ITEMS.forEach(it=>{ STATE[it.no] = { status: it.status, owner: it.owner, note: it.note, clickupUrl: it.clickupUrl, workflowState: it.workflowState, selfAssessment: it.selfAssessment, selfAssessmentNote: it.selfAssessmentNote }; });
+  ITEMS.forEach(it=>{ STATE[it.no] = { status: it.status, owner: it.owner, note: it.note, clickupUrl: it.clickupUrl, workflowState: it.workflowState, selfAssessment: it.selfAssessment, selfAssessmentNote: it.selfAssessmentNote, boxUrl: it.boxUrl, boxRemark: it.boxRemark, boxRemarkBy: it.boxRemarkBy, boxRemarkAt: it.boxRemarkAt, boxRemarkSource: it.boxRemarkSource }; });
   rebuildCats();
   render();
 }
