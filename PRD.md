@@ -1,9 +1,9 @@
 # PRD — IT Governance Dashboard (ITGR) — AutoCorp
 
 **Owner:** COE&S — AutoCorp (ATC)
-**Version:** 1.7
-**Status:** v1.0–v1.6 shipped and verified on Vercel — this revision specs + implements v1.7 (FY2026 alignment). **Deploy gate: the v1.7 block of `supabase/schema.sql` must be applied before the self-assessment import can run.**
-**Source:** Derived from current codebase (`index.html`), explicit stakeholder direction, and the **Marubeni ITGR Checklist FY2026 Ver.1** workbook (updated 3 Apr 2026, received 3 Sep 2026)
+**Version:** 1.8
+**Status:** v1.0–v1.8 all shipped, migrated, and verified live in production (`https://itgrmrbn.vercel.app`). No open deploy gates as of this revision.
+**Source:** Derived from current codebase (`index.html`, `/api/*`), explicit stakeholder direction, and the **Marubeni ITGR Checklist FY2026 Ver.1** workbook (updated 3 Apr 2026). Re-verified against `source/Marubeni_Group_IT_Governance_Rules_Checklist_English.xlsx` on 2026-09-08 — re-running `scripts/extract-xlsx.py` against that exact file reproduces `data/items.json` and `data/assessment.json` byte-for-byte, confirming the repo, the production database, and the source workbook all agree.
 
 ## Version History
 
@@ -16,8 +16,9 @@
 | 1.4 | 2026-08-10 | Close the v1.3 "no reopen flow" gap (previously a stated Non-Goal): once an item reaches a terminal decision (Compliant / Complied with Condition / Not Compliant), Owner and Evidence become locked; a new **"Request for Approval"** action reopens the item (back to `In Progress`) so the User can edit and walk it through Review → Approval again. The **ClickUp Task link stays editable at all times**, regardless of workflow state — it's a reference to external work, not compliance evidence, so it was never meant to be gated by the approval lock. |
 | 1.5 | 2026-08-24 | **TH/EN language toggle** with Thai translations of the checklist content (`*_th` columns, `data/items-th.json`). English stays the source of truth; the UI falls back to English wherever a translation is blank, and flags Thai as unreviewed machine translation. *(Authored outside this PRD's revision history — recorded here for completeness.)* |
 | 1.5b | 2026-08-25 | Thai translations for the Appendix 1–5 tables (`data/appendices-th.json`). *(Authored outside this PRD's revision history.)* |
-| 1.6 | 2026-08-27 | **External Read API** (`/api/v1/*`): bearer-token, read-only access for external systems, with scoped tokens, per-token rate limiting and a request log. See [docs/PRD-external-api.md](docs/PRD-external-api.md). *(Authored outside this PRD's revision history.)* |
-| 1.7 | 2026-09-03 | **FY2026 alignment.** Refresh the 96 requirements from the FY2026 Ver.1 workbook (10 revised; structure, categories and risk ratings unchanged). Restore **`Not Applicable`** as a sixth status — reversing part of the v1.3 merge, because FY2026 uses it for 8 requirements and Marubeni's scoring *excludes* them from the denominator rather than failing them. Add the **Marubeni Official Assessment** panel: the risk-weighted A–E score computed exactly as the auditor computes it (Very High 7 / High 5 / Middle 3 / Low 0), from an imported self-assessment held in new `self_assessment` columns kept deliberately separate from workflow-driven `status`. |
+| 1.6 | 2026-08-27 | **External Read API** (`/api/v1/*`): bearer-token, read-only access for external systems (n8n, LINE bot, Claude, etc.), with scoped tokens (`items:read` / `summary:read` / `history:read`), per-token rate limiting, and a request audit log. Fully specified in § 12 below (condensed from the original standalone [docs/PRD-external-api.md](docs/PRD-external-api.md), which remains as the deeper acceptance-criteria reference). Migration applied and live-verified in production 2026-08-27. |
+| 1.7 | 2026-09-03 | **FY2026 alignment.** Refresh the 96 requirements from the FY2026 Ver.1 workbook (10 revised; structure, categories and risk ratings unchanged). Restore **`Not Applicable`** as a sixth status — reversing part of the v1.3 merge, because FY2026 uses it for 8 requirements and Marubeni's scoring *excludes* them from the denominator rather than failing them. Add the **Marubeni Official Assessment** panel: the risk-weighted A–E score computed exactly as the auditor computes it (Very High 7 / High 5 / Middle 3 / Low 0), from an imported self-assessment held in new `self_assessment` columns kept deliberately separate from workflow-driven `status`. Migration applied and self-assessment data (96/96 items) imported into production 2026-09-08. |
+| 1.7b | 2026-09-08 | **Self-assessment on the External Read API.** v1.7's `self_assessment`/`self_assessment_note` reached the dashboard and the internal `/api/items` endpoint, but not `/api/v1/*` — a token could validate `status=Not Applicable` (it shares the same enum source) but couldn't actually read the self-assessment answer. `GET /api/v1/items` and `GET /api/v1/items/{no}` now return both fields; `GET /api/v1/meta` documents `self_assessment_marks` and a new `self_assessment` filter so an external caller discovers the field the same way it discovers everything else — by reading `/meta`, not by someone hand-writing an integration. |
 
 ---
 
@@ -294,6 +295,11 @@ Full DDL lives in `supabase/schema.sql`.
 - `item_status.status` check constraint gains a sixth value, `Not Applicable` (alongside `Not Compliant`, which v1.3 introduced).
 - `item_status.self_assessment` (text, nullable, one of `〇` / `×` / `-`) and `item_status.self_assessment_note` (text) — the workbook's recorded answer and remarks, never written by the approval workflow.
 
+### v1.6 additions (External Read API — see § 12)
+
+- `api_tokens` — id (uuid PK), name, token_hash (unique, HMAC-SHA256 keyed with its own `API_TOKEN_PEPPER` — never `PIN_PEPPER`), prefix (display-only), scopes (`text[]`, default `{items:read,summary:read}`), active, expires_at (nullable — tokens do not expire by default), last_used_at, created_by (FK → users), created_at.
+- `api_request_log` — id, token_id (FK → api_tokens, `on delete set null`), path, query (jsonb), status, duration_ms, created_at. Append-only; doubles as the storage for the per-token rate limit (a Vercel serverless function has no memory shared across invocations, so "requests in the last 60 seconds" is answered by counting rows here).
+
 ### v1.3 additions
 
 - `users.role` check constraint extended to `admin` | `user` | `reviewer` | `approver` | `read_only` (replaces `read_write`; requires the migration decision in § 4a).
@@ -314,6 +320,8 @@ Full DDL lives in `supabase/schema.sql`.
 - **(v1.3, leading)** 100% of newly-submitted items go through a Reviewer and Approver before reaching a terminal state (zero items marked Compliant/NC by direct DB edit outside the workflow, sampled from `item_workflow_events`).
 - **(v1.3, leading)** Median time from "Submit for Approval" to a terminal decision, measured in the first month, to establish a baseline turnaround-time expectation.
 - **(v1.3, lagging)** % of submissions rejected at least once before final approval — a high rate signals the User-facing guidance/required-fields bar is too loose (worth revisiting § P0 "minimum bar to submit").
+- **(v1.6, leading)** Time from issuing a new API token to a successful first call, measured against a real integration (not a synthetic test) — target ≤ 10 minutes using only what `/api/v1/meta` self-documents. Zero requests with a valid token but insufficient permission return `200` instead of `403` (checked via `api_request_log`, sampled weekly for the first month).
+- **(v1.6, lagging)** Number of times someone opens the dashboard purely to check status (not to edit anything) — should drop materially once at least one automation (Morning Brief, an n8n flow) is consuming `/api/v1/summary` regularly.
 
 ## 9. Open Questions
 
@@ -332,6 +340,9 @@ Full DDL lives in `supabase/schema.sql`.
 - ~~**Does Approver-level "Not Compliant" need a new status value**~~ — **RESOLVED (2026-08-10, stakeholder):** no new value — `Not Applicable` is renamed/repurposed to `Not Compliant` instead. Stakeholder was shown the concrete tradeoff (1 existing production item currently marked `Not Applicable` will be reinterpreted as `Not Compliant`, and the system loses the ability to mark an item "doesn't apply to us" going forward) and confirmed this is acceptable. **Revisited in v1.7:** the FY2026 workbook uses N/A for 8 requirements and scores it differently from a failure, so N/A was restored as a sixth status. `Not Compliant` is unaffected and remains exactly as decided here.
 - **Rejection routing** (stakeholder, v1.3, non-blocking): assumed both Reviewer-reject and Approver-reject go straight back to the User (skip re-review), not back one step (Approver→Reviewer). Confirm this matches expectations.
 - **Does reopening reset `status` to `In Progress` immediately** (stakeholder, v1.4, non-blocking): assumed yes — an item stops counting as Compliant/Partial in the Overview/radar/grade the instant it's reopened, not just after resubmission. The alternative (keep showing the old status until a new decision lands) would let the dashboard overstate compliance while evidence is actively being revised, which seems worse — but flagging in case COE&S wants the old status to persist until the new decision replaces it.
+- **(v1.6, non-blocking)** Is 60 requests/minute per token enough for batch automation (e.g. an n8n flow that walks all 96 items)? — assumed yes pending real usage; revisit after the first month.
+- **(v1.6, non-blocking)** How long should `api_request_log` rows be retained? — no policy set yet; 90 days proposed but not confirmed.
+- **(v1.6, non-blocking)** Should `GET /api/v1/openapi.json` (auto-import into n8n/Custom GPT/Claude as a tool, no hand-written integration) and per-token IP allowlisting move from P1 to P0? — both remain unbuilt; IP allowlisting gained importance once token expiry was decided against (D2 in § 12.7) since it becomes the second line of defense if a token leaks.
 
 ## 10. Timeline Considerations
 
@@ -359,3 +370,79 @@ Full DDL lives in `supabase/schema.sql`.
 7. **Exportable decision packet** (PDF or structured export) per item or per category — the actual Marubeni submission will likely want a clean summary of final decisions + evidence references, not a live dashboard link. Worth scoping once the workflow itself is stable.
 8. **A distinct read-only "external auditor" experience** — if Marubeni or an external auditor ever needs direct access instead of a report handoff, today's `read_only` role already covers "can't edit," but consider whether they should see the full workflow history/comments or only final decisions.
 9. **Basic concurrency guard on workflow actions** — e.g., if a Reviewer and an Approver somehow act on the same item near-simultaneously (unlikely but possible once items move faster through a formal queue), the BFF should check the item's current `workflow_state` before applying a transition and reject stale actions with a clear "this item already moved" error, rather than silently applying an action against a state that no longer exists.
+
+## 12. External Read API (v1.6–v1.7b)
+
+*Condensed from the original standalone [docs/PRD-external-api.md](docs/PRD-external-api.md), written 2026-08-27 — that document carries the full acceptance-criteria checklist per requirement and is kept as the deeper reference. This section makes the dashboard's PRD complete on its own without requiring a second document to describe a shipped, live feature.*
+
+### 12.1 Problem Statement
+
+Before v1.6, ITGR compliance data was reachable exactly one way: open the dashboard, log in with a PIN. The session cookie is `httpOnly` + `sameSite: strict` ([lib/auth.js](lib/auth.js)) by design — it cannot be used from outside a browser tab at all, let alone from an external system. Questions answerable in three seconds with an API — *"which categories are still red?"*, *"how many items are waiting on my approval?"*, *"which Very High-risk items haven't started?"* — required opening the dashboard, filtering by hand, reading, every time. None of it could feed a daily brief or an automation.
+
+### 12.2 Goals
+
+| # | Goal | Measured by |
+|---|---|---|
+| G1 | An external system can ask about status without a human opening the dashboard | ≥ 90% of a fixed 20-question test set answerable in ≤ 2 API calls |
+| G2 | A new integration is running within minutes, not a support ticket | Issue a token → first successful call in ≤ 10 minutes, using only what the API documents about itself |
+| G3 | The new surface never weakens the existing system | A leaked token is revoked instantly and **cannot write a single field**, ever |
+| G4 | Every external call is auditable after the fact | 100% of `/api/v1/*` requests produce a row in `api_request_log` — token, path, status, timing |
+
+### 12.3 Non-Goals
+
+| Not doing | Why |
+|---|---|
+| Writing/editing data through the API | v1 is read-only by design — writing would require deciding "who does the AI act as," which collides with the User → Reviewer → Approver segregation-of-duties model (§ Goal 6) |
+| Driving the workflow (submit/review/approve) through the API | Same reason, more acute — an approval must always trace to a real accountable person |
+| Serving evidence files through the API | Files already live in a private Storage bucket behind short-lived signed URLs gated on the PIN session; exposing them via a longer-lived bearer token would be a real leak surface |
+| Natural-language query parsing on the server | Deliberately pushed to the caller — the external LLM (Claude, GPT, whatever the caller already has) does this using `/api/v1/meta`, so ITGR never holds an LLM API key or a hosting bill for one |
+| Outbound webhooks | Opposite direction from what was asked; would need its own retry/dedup/secret-rotation design (parked as P2, § 12.6) |
+| Direct access for Marubeni or other external parties | v1 is scoped to the stakeholder's own tools (n8n, LINE bot, Claude); opening it further needs per-token category scoping, mandatory expiry, and a data-use agreement that don't exist yet |
+
+### 12.4 Authentication & Security Model
+
+- **Bearer token, fully separate from the dashboard's PIN session** — different table (`api_tokens` vs `users`), different transport (`Authorization: Bearer <token>` header vs. httpOnly cookie), different secret (`API_TOKEN_PEPPER` vs. `PIN_PEPPER`/`JWT_SECRET`). Neither credential works against the other's endpoints, so rotating one can never invalidate the other.
+- Token format: `itgr_live_<random>`, hashed at rest with the same HMAC-SHA256-with-pepper construction as PIN hashing ([lib/pin.js](lib/pin.js)) — an indexed O(1) lookup without ever storing the credential itself. The raw value is shown **exactly once**, at creation, in the Admin tab.
+- **No CORS headers are ever set** on `/api/v1/*` responses — a token cannot be used by JavaScript running in someone else's browser tab, only from a server/script/automation tool.
+- **Scoped tokens** — `items:read`, `summary:read` (both granted by default), `history:read` (opt-in only; workflow comments can name people and describe unresolved issues plainly, so a token has to explicitly ask to read them — decision D3, § 12.7).
+- **Tokens do not expire by default** (decision D2, § 12.7) — revocation is the control instead. This trades one risk for another: a leaked token that nobody revokes stays live indefinitely. The Admin tab's token table therefore *must* surface `last_used_at` prominently so a forgotten, still-live credential is visible, not just theoretically revocable.
+- **Rate limit:** 60 requests/minute per token, enforced by counting rows in `api_request_log` (a Vercel serverless function shares no memory across invocations, so this can't be an in-process counter) — `429` with `Retry-After` on breach.
+- **Every request is logged before the response is sent, not after** — see § 12.8 for why this ordering is load-bearing, not stylistic.
+
+### 12.5 Endpoints
+
+| Method | Path | Scope required | Purpose |
+|---|---|---|---|
+| GET | `/api/v1/meta` | any valid token | Self-describing discovery document: every category/status/risk/workflow-state/self-assessment value, every filter with its type, and 9 worked `{question_th, question_en, request}` examples. This is what lets an external LLM translate "หมวดไหนยังแดงอยู่บ้าง" into a correct query without ITGR running any NL model of its own. Cacheable 1h. |
+| GET | `/api/v1/items` | `items:read` | Search/filter the 96 requirements. Filters: `cat`, `risk`, `priority`, `status`, `workflow_state`, `self_assessment` *(v1.7b)*, `owner` (partial match), `article` (partial match), `q` (full-text, both languages regardless of `lang`), `updated_since`, `lang` (`th`\|`en`, default `th`), `limit` (default 25, max 100 — over-limit is clamped, not rejected), `offset`. Response always carries `total` + `has_more`. |
+| GET | `/api/v1/items/{no}` | `items:read` | One requirement, same shape as an `/items` row. `404 item_not_found` for an out-of-range number, not `500`. |
+| GET | `/api/v1/items/{no}/history` | `items:read` **+** `history:read` | Workflow timeline (from/to state, comment, actor, timestamp) and evidence file names — **file names only, no signed URL, no download path**, matching the "no evidence export" non-goal. |
+| GET | `/api/v1/summary` | `summary:read` | Overall % + grade, per-category breakdown, counts by status/risk/workflow-state, and `very_high_risk_not_started` — computed with the *exact same* `progressPct()`/`gradeFor()` logic the dashboard's own Overview tab uses, so the two can never disagree. Accepts `?cat=` to scope to one category. |
+
+Every error response shares one shape — `{ "error": { "code": "...", "message": "...", ...context } }` — with a machine-readable `code` (`missing_token`, `invalid_token`, `token_expired`, `insufficient_scope`, `invalid_filter`, `invalid_item_no`, `item_not_found`, `rate_limited`, `internal_error`) so a caller can branch on `code` instead of parsing prose, and every `invalid_filter` includes `allowed_values` so a caller can self-correct without a second round trip to documentation.
+
+### 12.6 Roadmap
+
+**Shipped (P0, v1.6–v1.7b):** everything in § 12.4–12.5, plus token issuance/revocation/rename/rescoping from the Admin tab, and a full documentation page ([api-docs.html](api-docs.html), linked from the Admin tab) covering quickstart, every endpoint, integration guides for n8n/Claude/Custom GPT/LINE, and an FAQ.
+
+**Not yet built (P1):**
+- `GET /api/v1/openapi.json` — an OpenAPI 3.1 document so n8n/Custom GPT/Claude can auto-import this API as a tool instead of a hand-written integration. This is the piece that would make the "10 minutes to first call" goal (G2) reliably true rather than best-case.
+- Per-token IP allowlisting — gained importance after D2 (§ 12.7): with tokens that don't expire on their own, this becomes the second line of defense if one leaks.
+- `X-Request-Id` on every response, for cross-system troubleshooting.
+- `updated_since` as a true delta feed ("what changed since yesterday"), for a daily-brief-style consumer.
+
+**Deliberately deferred (P2):** outbound webhooks on status change; an MCP server wrapping this API for direct Claude tool use; a write scope (`items:write`) for owner/note/ClickUp updates — blocked on deciding whose identity a write acts under; per-category token scoping, for the day an external auditor needs direct (not report-handoff) access.
+
+### 12.7 Key Decisions
+
+| # | Question | Decision | Consequence |
+|---|---|---|---|
+| D1 | Is `owner` (a real person's name) something the API must mask? | No — export it as-is | Simpler `/items` response; no separate scope or redaction logic |
+| D2 | Should tokens expire by default? | No — revocation is the control | `last_used_at` becomes load-bearing (§ 12.4); IP allowlisting (P1) gains urgency as a second safety net |
+| D3 | Should workflow comments (`/items/{no}/history`) be readable under the default scope? | No — separate `history:read`, opt-in | A token issued for a status dashboard never incidentally exposes what a Reviewer said about someone's evidence |
+
+### 12.8 A Deployment Lesson Worth Recording
+
+The first production deployment of this API (2026-08-27) logged requests in a `try/finally` block **around** the JSON response — i.e., the audit-log write was `await`-ed only *after* `res.status(200).json(...)` had already been sent. Live testing immediately after deploy showed only 1 of 9 real requests actually produced an `api_request_log` row, including a `403` that should have been logged. Vercel's Node.js runtime does not reliably keep a function invocation alive for work that starts only after the response has been flushed to the client — a gap invisible to any offline/local test, since a plain Node process has no equivalent teardown behavior.
+
+The fix (shipped same day, hotfix PR): **log first, then respond.** Every `/api/v1/*` exit point — success and every error — now writes its `api_request_log` row before calling `res.json()`, so the insert always completes while the function is unambiguously still executing. Verified by firing 9 varied requests (200/400/401/403/404) at production after the fix: 9/9 logged. This is recorded here specifically so nobody "cleans up" the ordering in `lib/apiAuth.js`'s `respond()`/`respondError()` later without knowing why it's like that.

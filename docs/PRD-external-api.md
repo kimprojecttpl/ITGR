@@ -1,9 +1,9 @@
 # PRD — External Read API (ITGR Query API v1)
 
-> สถานะ: **เฟส 1 พัฒนาเสร็จแล้ว รอ migration** (2026-08-27) — โค้ด R1 R2 R3 R4 R6 R7 R8 พร้อม push แล้ว ยังไม่ทำงานจริงจนกว่าจะรัน migration ด้านล่าง · เจ้าของ: ต้น (Chaiwat) · เขียนเมื่อ 2026-08-27
-> ระบบอ้างอิง: ITGR Dashboard v1.5b (`kimprojecttpl/ITGR`, commit `a64b6da`)
+> สถานะ: **Live in production** — migration รันแล้ว (2026-08-27), เพิ่ม `self_assessment` (v1.7b) แล้ว (2026-09-08), ยืนยันด้วยการยิงจริงกับ production ทั้งสองรอบ · เจ้าของ: ต้น (Chaiwat) · เขียนเมื่อ 2026-08-27, ปรับปรุงล่าสุด 2026-09-08
+> ระบบอ้างอิง: ITGR Dashboard v1.8 (`kimprojecttpl/ITGR`) · **เอกสารนี้เป็น reference ละเอียด (acceptance criteria ครบทุกข้อ) — สรุปภาพรวมล่าสุดอยู่ที่ [PRD.md](../PRD.md) § 12 และเอกสารผู้ใช้จริงอยู่ที่ [api-docs.html](../api-docs.html)**
 > ขอบเขตที่ตกลงแล้ว: **อ่านอย่างเดียว** · **ฝั่งผู้เรียกแปลภาษาคนเอง** · **ผู้ใช้คือเครื่องมือของต้น (n8n / LINE bot / Claude)**
-> คำถาม blocking ตอบครบแล้ว (2026-08-27) — ดูหัวข้อ 7
+> คำถาม blocking ตอบครบแล้ว (2026-08-27) — ดูหัวข้อ 7 · P0 ทั้งหมด (R1–R8) shipped + verified — ดูหัวข้อ 8 Timeline & Phasing
 
 ---
 
@@ -239,18 +239,19 @@ create table if not exists api_tokens (
 
 **ไม่มีกำหนดส่งตายตัว** — งานนี้ไม่บล็อกการส่ง Marubeni แต่จะช่วยตอนรวบข้อมูลมาก จึงควรเสร็จก่อนรอบตรวจถัดไป
 
-| เฟส | ขอบเขต | ผลที่ได้ |
+| เฟส | ขอบเขต | สถานะ |
 |---|---|---|
-| **1** ✅ โค้ดเสร็จ | R1 R2 R3 R4 R6 R7 R8 + migration v1.6 | ยิงถามรายการ, ดูรายละเอียดข้อเดียว, ดูประวัติ (แยก scope), และเห็น rate-limit/log ได้จริงจาก n8n — **รอรัน migration ก่อนใช้งานจริง** |
-| **2** ✅ โค้ดเสร็จ | R5 (summary) | ตัวเลขสรุปในหนึ่งครั้ง ไม่ต้องดึง 96 ข้อมานับเอง |
-| **3** | P1 ทั้งชุด (เน้น OpenAPI + IP allowlist ตาม Q8) | ต่อเครื่องมือใหม่ได้เองโดยไม่ต้องเขียนโค้ด |
+| **1** ✅ live | R1 R2 R3 R4 R6 R7 R8 + migration v1.6 | ยิงถามรายการ, ดูรายละเอียดข้อเดียว, ดูประวัติ (แยก scope), rate-limit/log — **ยืนยันแล้วด้วยการยิงจริงกับ production (2026-08-27)** |
+| **2** ✅ live | R5 (summary) | ตัวเลขสรุปในหนึ่งครั้ง — verified ตรงกับ Overview tab เป๊ะ |
+| **2b** ✅ live | self_assessment บน /items, /items/{no}, /meta (v1.7b) | เพิ่มหลัง FY2026 alignment ทำให้ dashboard มีฟิลด์นี้แล้วแต่ API ภายนอกยังไม่มี — ปิดช่องว่างนี้แล้ว (2026-09-08) |
+| **3** | P1 ทั้งชุด (เน้น OpenAPI + IP allowlist ตาม Q8) | ยังไม่เริ่ม |
 
-**สิ่งที่ต้องมีก่อนใช้งานจริง (โค้ดเสร็จแล้ว แต่ยังใช้ไม่ได้จนกว่าจะทำ 2 ข้อนี้)**
-- รัน migration v1.6 ใน [supabase/schema.sql](../supabase/schema.sql) (ตาราง `api_tokens` + `api_request_log`) → **ต้นต้องรันเองใน Supabase SQL Editor** (Claude รัน DDL กับโปรเจกต์นี้ไม่ได้)
-- เพิ่ม env `API_TOKEN_PEPPER` ใน Vercel (สร้างด้วย `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`) — **ตั้งแบบอ่านกลับได้** ไม่งั้นจะเจอปัญหาเดิมเหมือนตอน `PIN_PEPPER`
+**Migration + env ที่เคยเป็นเงื่อนไขก่อนใช้งานจริง — ทำครบแล้วทั้งสองข้อ:**
+- ✅ migration v1.6 ([supabase/schema.sql](../supabase/schema.sql), ตาราง `api_tokens` + `api_request_log`) รันแล้วใน Supabase
+- ✅ env `API_TOKEN_PEPPER` ตั้งใน Vercel แบบ non-sensitive (อ่านกลับได้) ทั้ง Production และ Preview
 
-**ไฟล์ที่เพิ่ม/แก้ในเฟส 1–2 (dev เสร็จ, syntax + unit test ผ่านหมด, ยังไม่เคยยิงจริงเพราะ migration ยังไม่รัน):**
-`supabase/schema.sql` (v1.6) · `lib/checklistEnums.js` (ใหม่) · `lib/apiToken.js` (ใหม่) · `lib/apiAuth.js` (ใหม่) · `lib/apiLocalize.js` (ใหม่) · `api/v1/meta.js` · `api/v1/items/index.js` · `api/v1/items/[no].js` · `api/v1/items/[no]/history.js` · `api/v1/summary.js` · `api/admin/tokens/index.js` · `api/admin/tokens/[id].js` · `api/items/[no].js` (refactor: ใช้ `STATUSES` จาก `lib/checklistEnums.js` แทนอาร์เรย์ซ้ำ) · ส่วน Admin UI ใหม่ใน `index.html` · `.env.example` · `README.md`
+**ไฟล์ที่เพิ่ม/แก้ในเฟส 1–2b (dev เสร็จ, ยิงจริงกับ production แล้วทุกจุด):**
+`supabase/schema.sql` (v1.6 + v1.7) · `lib/checklistEnums.js` · `lib/apiToken.js` · `lib/apiAuth.js` · `lib/apiLocalize.js` · `lib/itemStatusColumns.js` (v1.7b) · `api/v1/meta.js` · `api/v1/items/index.js` · `api/v1/items/[no].js` · `api/v1/items/[no]/history.js` · `api/v1/summary.js` · `api/admin/tokens/index.js` · `api/admin/tokens/[id].js` · `api/items/[no].js` (refactor: ใช้ `STATUSES` จาก `lib/checklistEnums.js` แทนอาร์เรย์ซ้ำ) · ส่วน Admin UI ใหม่ใน `index.html` · [api-docs.html](../api-docs.html) (เอกสารผู้ใช้จริง) · `.env.example` · `README.md`
 
 **ความเสี่ยงที่ต้องจับตา**
 - Serverless function บน Vercel ไม่มี state ร่วมกัน → rate limit ต้องเก็บ counter ใน Supabase หรือใช้ Vercel KV/Upstash เพิ่ม ไม่ใช่ตัวแปรในหน่วยความจำ
