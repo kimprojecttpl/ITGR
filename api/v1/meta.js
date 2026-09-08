@@ -8,7 +8,10 @@
 // No scope required beyond a valid token — this is discovery, not data.
 import { getSupabase } from "../../lib/supabase.js";
 import { requireApiToken, respond, respondError, methodNotAllowed } from "../../lib/apiAuth.js";
-import { STATUSES, RISK_LEVELS, PRIORITY_MARKS, QUESTION_TYPES, GRADE_THRESHOLDS } from "../../lib/checklistEnums.js";
+import {
+  STATUSES, RISK_LEVELS, PRIORITY_MARKS, QUESTION_TYPES, GRADE_THRESHOLDS,
+  SELF_ASSESSMENT_MARKS, SELF_ASSESSMENT_LABELS,
+} from "../../lib/checklistEnums.js";
 import { WORKFLOW_STATES } from "../../lib/workflow.js";
 import { API_SCOPES } from "../../lib/apiToken.js";
 import { SUPPORTED_LANGS } from "../../lib/apiLocalize.js";
@@ -60,12 +63,16 @@ export default async function handler(req, res) {
     priority_marks: PRIORITY_MARKS.map((mark) => ({ mark, label: PRIORITY_LABELS[mark] })),
     question_types: QUESTION_TYPES,
     grade_thresholds: GRADE_THRESHOLDS,
+    // v1.7 — Marubeni's own FY2026 self-assessment answer, kept separate
+    // from `status` (which only advances through the approval workflow).
+    self_assessment_marks: SELF_ASSESSMENT_MARKS.map((mark) => ({ mark, ...SELF_ASSESSMENT_LABELS[mark] })),
     filters: {
       cat: { type: "integer", values: categories.map((c) => c.no), description: "หมวดข้อกำหนด 1-8 / requirement category 1-8" },
       risk: { type: "enum", values: RISK_LEVELS },
       priority: { type: "enum", values: PRIORITY_MARKS },
       status: { type: "enum", values: STATUSES },
       workflow_state: { type: "enum", values: WORKFLOW_STATES },
+      self_assessment: { type: "enum", values: SELF_ASSESSMENT_MARKS, description: "Marubeni's own FY2026 self-assessment mark, distinct from status" },
       owner: { type: "string", description: "partial match, case-insensitive" },
       article: { type: "string", description: "partial match on the ITGR article/paragraph reference" },
       q: { type: "string", description: "full-text search across name/content/standard/evidence in both languages" },
@@ -89,6 +96,7 @@ export default async function handler(req, res) {
       { question_th: "ใครรับผิดชอบข้อ 15", question_en: "Who owns item 15?", request: "GET /api/v1/items/15" },
       { question_th: "ข้อ 15 มีความเป็นมายังไงบ้าง", question_en: "What's the history on item 15?", request: "GET /api/v1/items/15/history (needs history:read)" },
       { question_th: "ค้นหาข้อที่พูดถึง MFA", question_en: "Search for items mentioning MFA", request: "GET /api/v1/items?q=multi-factor" },
+      { question_th: "ข้อที่ AutoCorp ประเมินตนเองว่ายังไม่ได้ทำมีอะไรบ้าง", question_en: "Which items did AutoCorp self-assess as not implemented?", request: "GET /api/v1/items?self_assessment=×" },
     ],
   });
 }

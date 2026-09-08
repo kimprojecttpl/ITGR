@@ -163,7 +163,13 @@ curl -H <span class="s1">"Authorization: Bearer itgr_live_xxxxxxxxxxxxxxxxxxxxxx
       <span class="s1">"short_th"</span>: <span class="s1">"การกำกับดูแลความปลอดภัยสารสนเทศ"</span>, <span class="s1">"short_en"</span>: <span class="s1">"Security Governance"</span> }
     <span class="c1">// ... รวม 8 หมวด</span>
   ],
-  <span class="s1">"statuses"</span>: [<span class="s1">"Not Started"</span>,<span class="s1">"In Progress"</span>,<span class="s1">"Compliant"</span>,<span class="s1">"Partial"</span>,<span class="s1">"Not Compliant"</span>],
+  <span class="s1">"statuses"</span>: [<span class="s1">"Not Started"</span>,<span class="s1">"In Progress"</span>,<span class="s1">"Compliant"</span>,<span class="s1">"Partial"</span>,<span class="s1">"Not Compliant"</span>,<span class="s1">"Not Applicable"</span>],
+  <span class="c1">// v1.7 — Marubeni's own FY2026 self-assessment mark, separate from status</span>
+  <span class="s1">"self_assessment_marks"</span>: [
+    { <span class="s1">"mark"</span>: <span class="s1">"〇"</span>, <span class="s1">"th"</span>: <span class="s1">"ดำเนินการแล้ว"</span>, <span class="s1">"en"</span>: <span class="s1">"Implemented"</span> },
+    { <span class="s1">"mark"</span>: <span class="s1">"×"</span>, <span class="s1">"th"</span>: <span class="s1">"ยังไม่ดำเนินการ"</span>, <span class="s1">"en"</span>: <span class="s1">"Not implemented"</span> },
+    { <span class="s1">"mark"</span>: <span class="s1">"-"</span>, <span class="s1">"th"</span>: <span class="s1">"ไม่เกี่ยวข้อง"</span>, <span class="s1">"en"</span>: <span class="s1">"Not applicable"</span> }
+  ],
   <span class="s1">"workflow_states"</span>: [<span class="s1">"Not Started"</span>, <span class="s1">"..."</span>, <span class="s1">"Pending Review"</span>, <span class="s1">"Pending Approval"</span>, <span class="s1">"..."</span>],
   <span class="s1">"risk_levels"</span>: [<span class="s1">"Very High"</span>,<span class="s1">"High"</span>,<span class="s1">"Middle"</span>,<span class="s1">"Low"</span>],
   <span class="s1">"filters"</span>: { <span class="s1">"cat"</span>: {...}, <span class="s1">"risk"</span>: {...}, <span class="s1">"status"</span>: {...}, <span class="s1">"..."</span>: <span class="s1">"..."</span> },
@@ -187,8 +193,9 @@ curl -H <span class="s1">"Authorization: Bearer itgr_live_xxxxxxxxxxxxxxxxxxxxxx
               <tr><td class="px-2 py-1.5 font-mono">cat</td><td class="px-2 py-1.5 text-slate-400">1–8</td><td class="px-2 py-1.5">หมวดข้อกำหนด</td></tr>
               <tr><td class="px-2 py-1.5 font-mono">risk</td><td class="px-2 py-1.5 text-slate-400">enum</td><td class="px-2 py-1.5">Very High / High / Middle / Low</td></tr>
               <tr><td class="px-2 py-1.5 font-mono">priority</td><td class="px-2 py-1.5 text-slate-400">enum</td><td class="px-2 py-1.5">◎ (สูงสุด) / 〇 (สำคัญ) / ว่าง (ปกติ)</td></tr>
-              <tr><td class="px-2 py-1.5 font-mono">status</td><td class="px-2 py-1.5 text-slate-400">enum</td><td class="px-2 py-1.5">Not Started / In Progress / Compliant / Partial / Not Compliant</td></tr>
+              <tr><td class="px-2 py-1.5 font-mono">status</td><td class="px-2 py-1.5 text-slate-400">enum</td><td class="px-2 py-1.5">Not Started / In Progress / Compliant / Partial / Not Compliant / Not Applicable</td></tr>
               <tr><td class="px-2 py-1.5 font-mono">workflow_state</td><td class="px-2 py-1.5 text-slate-400">enum</td><td class="px-2 py-1.5">สถานะ workflow ละเอียด เช่น Pending Review, Pending Approval</td></tr>
+              <tr><td class="px-2 py-1.5 font-mono">self_assessment</td><td class="px-2 py-1.5 text-slate-400">〇 | × | -</td><td class="px-2 py-1.5">ผลประเมินตนเองของ AutoCorp ตาม workbook FY2026 — <b>คนละค่ากับ status</b> (ดูคำอธิบายด้านล่าง)</td></tr>
               <tr><td class="px-2 py-1.5 font-mono">owner</td><td class="px-2 py-1.5 text-slate-400">string</td><td class="px-2 py-1.5">ค้นชื่อผู้รับผิดชอบ (partial match)</td></tr>
               <tr><td class="px-2 py-1.5 font-mono">article</td><td class="px-2 py-1.5 text-slate-400">string</td><td class="px-2 py-1.5">ค้นเลขมาตรา ITGR (partial match)</td></tr>
               <tr><td class="px-2 py-1.5 font-mono">q</td><td class="px-2 py-1.5 text-slate-400">string</td><td class="px-2 py-1.5">ค้นข้อความในชื่อ/เนื้อหา/เกณฑ์/หลักฐาน — ค้นทั้งไทยและอังกฤษเสมอ</td></tr>
@@ -212,10 +219,12 @@ curl -H <span class="s1">"Authorization: Bearer itgr_live_xxxxxxxxxxxxxxxxxxxxxx
       <span class="s1">"article"</span>: <span class="s1">"6(1)"</span>, <span class="s1">"risk"</span>: <span class="s1">"Very High"</span>, <span class="s1">"priority"</span>: <span class="s1">""</span>,
       <span class="s1">"status"</span>: <span class="s1">"Not Started"</span>, <span class="s1">"workflow_state"</span>: <span class="s1">"In Progress"</span>,
       <span class="s1">"owner"</span>: <span class="s1">""</span>, <span class="s1">"note"</span>: <span class="s1">""</span>, <span class="s1">"clickup_url"</span>: <span class="s1">""</span>,
+      <span class="s1">"self_assessment"</span>: <span class="s1">"×"</span>, <span class="s1">"self_assessment_note"</span>: <span class="s1">""</span>,
       <span class="s1">"updated_at"</span>: <span class="s1">"2026-08-11T02:46:23.251+00:00"</span>
     }
   ]
 }</pre>
+        <p class="text-xs text-amber-600 mt-2 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">⚠️ <b>status</b> กับ <b>self_assessment</b> ไม่ใช่ตัวเดียวกัน — <code class="bg-white/60 px-1 rounded">status</code> คือผลจาก workflow User → Reviewer → Approver ของ AutoCorp เอง ส่วน <code class="bg-white/60 px-1 rounded">self_assessment</code> คือคำตอบดิบจาก workbook FY2026 ที่ AutoCorp ประเมินตนเองไว้ ตัดขาดจากกันโดยตั้งใจ — ค่า self_assessment เป็น <code class="bg-white/60 px-1 rounded">null</code> ได้ถ้าข้อนั้นยังไม่มีผลประเมิน</p>
       </div>
 
       <!-- /items/{no} -->
@@ -263,7 +272,7 @@ curl -H <span class="s1">"Authorization: Bearer itgr_live_xxxxxxxxxxxxxxxxxxxxxx
       <span class="s1">"item_count"</span>: <span class="n1">12</span>, <span class="s1">"progress_pct"</span>: <span class="n1">58</span>, <span class="s1">"grade"</span>: <span class="s1">"B"</span> }
     <span class="c1">// ... ครบ 8 หมวด</span>
   ],
-  <span class="s1">"by_status"</span>: { <span class="s1">"Not Started"</span>: <span class="n1">20</span>, <span class="s1">"In Progress"</span>: <span class="n1">15</span>, <span class="s1">"Compliant"</span>: <span class="n1">50</span>, <span class="s1">"Partial"</span>: <span class="n1">8</span>, <span class="s1">"Not Compliant"</span>: <span class="n1">3</span> },
+  <span class="s1">"by_status"</span>: { <span class="s1">"Not Started"</span>: <span class="n1">20</span>, <span class="s1">"In Progress"</span>: <span class="n1">15</span>, <span class="s1">"Compliant"</span>: <span class="n1">50</span>, <span class="s1">"Partial"</span>: <span class="n1">8</span>, <span class="s1">"Not Compliant"</span>: <span class="n1">3</span>, <span class="s1">"Not Applicable"</span>: <span class="n1">0</span> },
   <span class="s1">"by_risk"</span>: { <span class="s1">"Very High"</span>: <span class="n1">28</span>, <span class="s1">"High"</span>: <span class="n1">32</span>, <span class="s1">"Middle"</span>: <span class="n1">24</span>, <span class="s1">"Low"</span>: <span class="n1">12</span> },
   <span class="s1">"by_workflow_state"</span>: { <span class="s1">"..."</span>: <span class="s1">"..."</span> },
   <span class="s1">"very_high_risk_not_started"</span>: <span class="n1">7</span>
@@ -457,6 +466,10 @@ print(r.json()[<span class="s1">"overall"</span>][<span class="s1">"progress_pct
         <div class="bg-white rounded-xl border border-slate-200 p-4">
           <div class="font-semibold text-sm text-slate-700">ต้อง scope อะไรบ้างถ้าจะทำแดชบอร์ดสรุปภาพรวมอย่างเดียว?</div>
           <p class="text-xs text-slate-500 mt-1"><code class="bg-slate-100 px-1 rounded">summary:read</code> อย่างเดียวก็พอ ไม่ต้องมี items:read เลยถ้าไม่ต้องดูรายข้อ</p>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 p-4">
+          <div class="font-semibold text-sm text-slate-700">status กับ self_assessment ต่างกันยังไง?</div>
+          <p class="text-xs text-slate-500 mt-1"><code class="bg-slate-100 px-1 rounded">status</code> คือผลจาก workflow การอนุมัติของ AutoCorp เอง (User → Reviewer → Approver) ส่วน <code class="bg-slate-100 px-1 rounded">self_assessment</code> คือคำตอบดิบจาก workbook FY2026 ที่ AutoCorp กรอกประเมินตนเองไว้ก่อนเข้า workflow — สองค่านี้อาจไม่ตรงกันได้ และนั่นคือเรื่องปกติ ไม่ใช่บั๊ก</p>
         </div>
       </div>
     </section>

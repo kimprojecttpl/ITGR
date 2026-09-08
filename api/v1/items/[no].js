@@ -3,6 +3,7 @@
 import { getSupabase } from "../../../lib/supabase.js";
 import { requireApiToken, respond, respondError, methodNotAllowed } from "../../../lib/apiAuth.js";
 import { SUPPORTED_LANGS, localizeItem } from "../../../lib/apiLocalize.js";
+import { queryWithItemStatusFallback } from "../../../lib/itemStatusColumns.js";
 
 export default async function handler(req, res) {
   const startedAt = Date.now();
@@ -28,11 +29,13 @@ export default async function handler(req, res) {
   }
 
   const supabase = getSupabase();
-  const { data: row, error } = await supabase
-    .from("checklist_items")
-    .select("*, item_status(status, owner, note, clickup_url, workflow_state, updated_at)")
-    .eq("no", itemNo)
-    .maybeSingle();
+  const { data: row, error } = await queryWithItemStatusFallback((cols) =>
+    supabase
+      .from("checklist_items")
+      .select(`*, item_status(${cols})`)
+      .eq("no", itemNo)
+      .maybeSingle()
+  );
   if (error) {
     await respondError(req, res, token.id, startedAt, 500, "internal_error", "Failed to load item");
     return;
@@ -53,6 +56,8 @@ export default async function handler(req, res) {
         note: status?.note ?? "",
         clickup_url: status?.clickup_url ?? "",
         workflow_state: status?.workflow_state ?? "Not Started",
+        self_assessment: status?.self_assessment ?? null,
+        self_assessment_note: status?.self_assessment_note ?? "",
         updated_at: status?.updated_at ?? null,
       },
       lang

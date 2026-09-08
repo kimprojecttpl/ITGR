@@ -2,9 +2,10 @@
 // See docs/PRD-external-api.md §5 R4. Read-only; scope: items:read.
 import { getSupabase } from "../../../lib/supabase.js";
 import { requireApiToken, respond, respondError, methodNotAllowed } from "../../../lib/apiAuth.js";
-import { STATUSES, RISK_LEVELS, PRIORITY_MARKS } from "../../../lib/checklistEnums.js";
+import { STATUSES, RISK_LEVELS, PRIORITY_MARKS, SELF_ASSESSMENT_MARKS } from "../../../lib/checklistEnums.js";
 import { WORKFLOW_STATES } from "../../../lib/workflow.js";
 import { SUPPORTED_LANGS, localizeItem } from "../../../lib/apiLocalize.js";
+import { queryWithItemStatusFallback } from "../../../lib/itemStatusColumns.js";
 
 const MAX_LIMIT = 100;
 const DEFAULT_LIMIT = 25;
@@ -45,6 +46,8 @@ export default async function handler(req, res) {
     validationError = enumError("status", q.status, STATUSES);
   } else if (q.workflow_state && !WORKFLOW_STATES.includes(q.workflow_state)) {
     validationError = enumError("workflow_state", q.workflow_state, WORKFLOW_STATES);
+  } else if (q.self_assessment && !SELF_ASSESSMENT_MARKS.includes(q.self_assessment)) {
+    validationError = enumError("self_assessment", q.self_assessment, SELF_ASSESSMENT_MARKS);
   } else if (q.cat !== undefined) {
     catFilter = Number(q.cat);
     if (!Number.isInteger(catFilter) || catFilter < 1 || catFilter > 8) {
@@ -97,25 +100,26 @@ export default async function handler(req, res) {
   }
 
   const supabase = getSupabase();
-  let query = supabase
-    .from("checklist_items")
-    .select("*, item_status(status, owner, note, clickup_url, workflow_state, updated_at)")
-    .order("no", { ascending: true });
+  const { data: rows, error } = await queryWithItemStatusFallback((cols) => {
+    let query = supabase
+      .from("checklist_items")
+      .select(`*, item_status(${cols})`)
+      .order("no", { ascending: true });
 
-  if (catFilter !== undefined) query = query.eq("cat_no", catFilter);
-  if (q.risk) query = query.eq("risk", q.risk);
-  if (q.priority !== undefined) query = query.eq("priority", q.priority);
-  if (q.article) query = query.ilike("article", `%${q.article}%`);
-  // Search spans both languages regardless of `lang` — the same rule the
-  // dashboard's own search box uses, so an English query still finds an
-  // item whose Thai translation is what's blank, and vice versa.
-  if (q.q) {
-    const term = String(q.q).replace(/[%_]/g, "\\$&");
-    const cols = ["name", "content", "standard", "evidence", "name_th", "content_th", "standard_th", "evidence_th"];
-    query = query.or(cols.map((c) => `${c}.ilike.%${term}%`).join(","));
-  }
-
-  const { data: rows, error } = await query;
+    if (catFilter !== undefined) query = query.eq("cat_no", catFilter);
+    if (q.risk) query = query.eq("risk", q.risk);
+    if (q.priority !== undefined) query = query.eq("priority", q.priority);
+    if (q.article) query = query.ilike("article", `%${q.article}%`);
+    // Search spans both languages regardless of `lang` — the same rule the
+    // dashboard's own search box uses, so an English query still finds an
+    // item whose Thai translation is what's blank, and vice versa.
+    if (q.q) {
+      const term = String(q.q).replace(/[%_]/g, "\\$&");
+      const searchCols = ["name", "content", "standard", "evidence", "name_th", "content_th", "standard_th", "evidence_th"];
+      query = query.or(searchCols.map((c) => `${c}.ilike.%${term}%`).join(","));
+    }
+    return query;
+  });
   if (error) {
     await respondError(req, res, token.id, startedAt, 500, "internal_error", "Failed to load items");
     return;
@@ -131,17 +135,21 @@ export default async function handler(req, res) {
         note: status?.note ?? "",
         clickup_url: status?.clickup_url ?? "",
         workflow_state: status?.workflow_state ?? "Not Started",
+        self_assessment: status?.self_assessment ?? null,
+        self_assessment_note: status?.self_assessment_note ?? "",
         updated_at: status?.updated_at ?? null,
       },
       lang
     );
   });
 
-  // status/workflow_state/owner/updated_since filter post-fetch: they live
-  // on the joined item_status row, and Supabase's embedded-resource
-  // filters can't combine cleanly with the OR() text search above.
+  // status/workflow_state/self_assessment/owner/updated_since filter
+  // post-fetch: they live on the joined item_status row, and Supabase's
+  // embedded-resource filters can't combine cleanly with the OR() text
+  // search above.
   if (q.status) items = items.filter((it) => it.status === q.status);
   if (q.workflow_state) items = items.filter((it) => it.workflow_state === q.workflow_state);
+  if (q.self_assessment) items = items.filter((it) => it.self_assessment === q.self_assessment);
   if (q.owner) {
     const needle = String(q.owner).toLowerCase();
     items = items.filter((it) => it.owner.toLowerCase().includes(needle));
