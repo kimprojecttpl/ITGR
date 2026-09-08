@@ -2,7 +2,7 @@
 
 **Owner:** COE&S — AutoCorp (ATC)
 **Version:** 1.8
-**Status:** v1.0–v1.8 all shipped, migrated, and verified live in production (`https://itgrmrbn.vercel.app`). No open deploy gates as of this revision.
+**Status:** v1.0–v1.8 all shipped, migrated, and verified live in production (`https://itgrmrbn.vercel.app`). No open deploy gates as of this revision. § 13 adds a **drafted, not-yet-built** v1.9 proposal (Box.com Remark Sync) — spec only, no schema change or deploy yet.
 **Source:** Derived from current codebase (`index.html`, `/api/*`), explicit stakeholder direction, and the **Marubeni ITGR Checklist FY2026 Ver.1** workbook (updated 3 Apr 2026). Re-verified against `source/Marubeni_Group_IT_Governance_Rules_Checklist_English.xlsx` on 2026-09-08 — re-running `scripts/extract-xlsx.py` against that exact file reproduces `data/items.json` and `data/assessment.json` byte-for-byte, confirming the repo, the production database, and the source workbook all agree.
 
 ## Version History
@@ -19,6 +19,7 @@
 | 1.6 | 2026-08-27 | **External Read API** (`/api/v1/*`): bearer-token, read-only access for external systems (n8n, LINE bot, Claude, etc.), with scoped tokens (`items:read` / `summary:read` / `history:read`), per-token rate limiting, and a request audit log. Fully specified in § 12 below (condensed from the original standalone [docs/PRD-external-api.md](docs/PRD-external-api.md), which remains as the deeper acceptance-criteria reference). Migration applied and live-verified in production 2026-08-27. |
 | 1.7 | 2026-09-03 | **FY2026 alignment.** Refresh the 96 requirements from the FY2026 Ver.1 workbook (10 revised; structure, categories and risk ratings unchanged). Restore **`Not Applicable`** as a sixth status — reversing part of the v1.3 merge, because FY2026 uses it for 8 requirements and Marubeni's scoring *excludes* them from the denominator rather than failing them. Add the **Marubeni Official Assessment** panel: the risk-weighted A–E score computed exactly as the auditor computes it (Very High 7 / High 5 / Middle 3 / Low 0), from an imported self-assessment held in new `self_assessment` columns kept deliberately separate from workflow-driven `status`. Migration applied and self-assessment data (96/96 items) imported into production 2026-09-08. |
 | 1.7b | 2026-09-08 | **Self-assessment on the External Read API.** v1.7's `self_assessment`/`self_assessment_note` reached the dashboard and the internal `/api/items` endpoint, but not `/api/v1/*` — a token could validate `status=Not Applicable` (it shares the same enum source) but couldn't actually read the self-assessment answer. `GET /api/v1/items` and `GET /api/v1/items/{no}` now return both fields; `GET /api/v1/meta` documents `self_assessment_marks` and a new `self_assessment` filter so an external caller discovers the field the same way it discovers everything else — by reading `/meta`, not by someone hand-writing an integration. |
+| 1.9 | 2026-09-08 (spec drafted) | **PROPOSED — not yet built.** Box.com Remark Sync: configure a Box **folder** shared link per item (an addition alongside the existing ClickUp Task link), pull the latest human comment from files in that folder into a new, purely informational `box_remark` field, and push a status-summary comment back to Box whenever the item's status changes. Deliberately mirrors the v1.7 self-assessment separation — a synced Box comment is a **Remark**, never a write to `status`/`workflow_state`; only User → Reviewer → Approver may set a compliance verdict (§ Goal 6). Full spec in § 13. |
 
 ---
 
@@ -75,16 +76,18 @@ All permission checks are enforced in the BFF handler, not just in frontend rend
 
 v1.3 introduces a **per-item approval workflow** (User → Reviewer → Approver) that sits on top of, and changes, the existing role model. The `read_write` tier — previously "can update tracker state" — is split into three workflow-specific roles that each act at a different stage of the same item:
 
-| Capability | `admin` | `user` | `reviewer` | `approver` | `read_only` |
-|---|---|---|---|---|---|
-| View all tabs | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Edit item's Owner / Evidence(note) / ClickUp Task link | ✅ | ✅ (own/assigned items) | ❌ | ❌ | ❌ |
-| Click "Submit for Approval" | ✅ | ✅ | ❌ | ❌ | ❌ |
-| Review a submitted item: OK (→ Approver) or Reject (→ back to User) with comment | ✅ | ❌ | ✅ | ❌ | ❌ |
-| Make the final decision: Compliant / Complied with Condition / Not Compliant, with comment + evidence | ✅ | ❌ | ❌ | ✅ | ❌ |
-| Edit checklist master data, manage users, view audit log | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Capability | `admin` | `user` | `reviewer` | `approver` | `read_only` | `marubeni` *(v1.9, proposed)* |
+|---|---|---|---|---|---|---|
+| View all tabs | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Edit item's Owner / Evidence(note) / ClickUp Task link | ✅ | ✅ (own/assigned items) | ❌ | ❌ | ❌ | ❌ |
+| Click "Submit for Approval" | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Review a submitted item: OK (→ Approver) or Reject (→ back to User) with comment | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| Make the final decision: Compliant / Complied with Condition / Not Compliant, with comment + evidence | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| Edit checklist master data, manage users, view audit log | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **(v1.9, proposed)** Write the Remark field directly in-app (an alternative to leaving a Box comment) | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| **(v1.9, proposed)** Trigger a manual "Sync to Box" (push current status + remark now) | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ |
 
-`admin` can act in any workflow stage (break-glass / cover for absence), everyone else is scoped to exactly one stage. This mirrors segregation-of-duties expectations for a compliance sign-off process — the preparer, reviewer, and approver should not default to the same person.
+`admin` can act in any workflow stage (break-glass / cover for absence), everyone else is scoped to exactly one stage. This mirrors segregation-of-duties expectations for a compliance sign-off process — the preparer, reviewer, and approver should not default to the same person. **`marubeni`** is a different kind of exception, not a workflow stage — it represents an external Marubeni-side reviewer who is not part of AutoCorp's internal preparer→reviewer→approver chain at all; see § 13.7 for the full rationale, including a real tension it raises against this PRD's own stated non-goals.
 
 **Migration note — decided (2026-08-10):** existing production users hold `admin` / `read_write` / `read_only` roles today (real accounts: `admin`, `lead`, `reviewer` — note "reviewer" is currently just a display name, not yet a role). `read_only` maps cleanly to the new model unchanged. The `lead` account (currently `read_write`) becomes **`user`**. This leaves the real system with **no `reviewer` and no `approver` account yet** — at least one of each must be created (via the Admin tab or `scripts/create-user.mjs`) before the workflow is usable end-to-end; `admin` can temporarily cover both stages if needed, but that defeats segregation-of-duties and should only be a short-term bridge.
 
@@ -278,6 +281,7 @@ so that the link to the remediation work stays current without needing to reopen
 - **(v1.3)** SLA/due-date tracking with an overdue flag once an item enters `Pending Review`/`Pending Approval`.
 - **(v1.4)** Locking Owner/Evidence during `Pending Review`/`Pending Approval` too, not just after a terminal decision (see § Non-Goals).
 - **(v1.4)** A "what changed since last approval" diff view when an item is reopened and resubmitted.
+- **(Proposed, v1.9)** Box.com Remark Sync — configure a Box folder per item, pull the latest comment in as an informational Remark, push status changes back as a comment. Full spec in § 13; not yet committed to a build timeline (blocked on naming who authorizes the Box Custom App, § 9).
 
 ## 7. Data Model (overview)
 
@@ -294,6 +298,15 @@ Full DDL lives in `supabase/schema.sql`.
 
 - `item_status.status` check constraint gains a sixth value, `Not Applicable` (alongside `Not Compliant`, which v1.3 introduced).
 - `item_status.self_assessment` (text, nullable, one of `〇` / `×` / `-`) and `item_status.self_assessment_note` (text) — the workbook's recorded answer and remarks, never written by the approval workflow.
+
+### v1.9 additions (proposed — not yet built — see § 13)
+
+- `item_status.box_url` (text, nullable) — Box **folder** shared link per item, configurable and always editable like `clickup_url` (reference, not compliance evidence).
+- `item_status.box_remark` / `.box_remark_by` / `.box_remark_at` — the most recent qualifying comment text, commenter, and timestamp pulled from Box. Deliberately separate from `item_status.self_assessment_note` (the frozen FY2026 workbook import) and from `status`/`workflow_state` — informational only.
+- `item_status.box_sync_file_id` / `.box_last_comment_id` — internal bookkeeping: which file inside the configured folder is the active comment thread, and the last comment id already imported (dedupe + loop prevention).
+- `item_status.box_remark_source` (text, `'box'`|`'app'`) — whether the current `box_remark` came from a real Box comment (pull) or was typed in-app by a `marubeni`/`admin` user (§ 13.7).
+- `box_sync_log` (new, append-only) — id, item_no, direction (`pull`|`push`), box_file_id, box_comment_id, remark_text, success, error, triggered_by (nullable FK → users, set only for a manual "Sync to Box"), created_at.
+- `users.role` check constraint gains a sixth value, `marubeni` (§ 4a, § 13.7) — a role outside the internal preparer→reviewer→approver chain, scoped to viewing + the two Box-remark actions above.
 
 ### v1.6 additions (External Read API — see § 12)
 
@@ -343,6 +356,12 @@ Full DDL lives in `supabase/schema.sql`.
 - **(v1.6, non-blocking)** Is 60 requests/minute per token enough for batch automation (e.g. an n8n flow that walks all 96 items)? — assumed yes pending real usage; revisit after the first month.
 - **(v1.6, non-blocking)** How long should `api_request_log` rows be retained? — no policy set yet; 90 days proposed but not confirmed.
 - **(v1.6, non-blocking)** Should `GET /api/v1/openapi.json` (auto-import into n8n/Custom GPT/Claude as a tool, no hand-written integration) and per-token IP allowlisting move from P1 to P0? — both remain unbuilt; IP allowlisting gained importance once token expiry was decided against (D2 in § 12.7) since it becomes the second line of defense if a token leaks.
+- **(v1.9, proposed, blocking before build starts)** Who at AutoCorp/Marubeni can authorize a Box Custom App at the enterprise level? This is an external Box-admin action outside this codebase (same class of dependency as "Supabase project must be provisioned," § 10) — build cannot start without it.
+- **(v1.9, proposed, non-blocking)** Poll interval for the pull job — proposed every 15–30 min via Vercel Cron; confirm this cadence is acceptable given Box sync is informational, not a live conversation.
+- **(v1.9, proposed, non-blocking)** Should the push direction also fire on Owner/Evidence(note) edits, not just `status`/`workflow_state` changes? Proposed scope is status changes only, to keep comment volume low; can extend later if the team wants every edit mirrored.
+- **(v1.9, proposed, non-blocking)** Retention of `box_sync_log` — no policy proposed yet; likely the same answer as `api_request_log`'s open retention question above.
+- **(v1.9, proposed, blocking before real accounts are issued)** The `marubeni` role (§ 13.7, decision D3) gives an external Marubeni-side person a real ITGR login for the first time — this revisits § 3's "internal tool only" framing and § 12.3's parked "direct access for Marubeni or other external parties." Needs an explicit go-ahead from whoever owns AutoCorp/Marubeni's data-access policy, not just an engineering decision, before any real `marubeni` account is created.
+- **(v1.9, proposed, non-blocking)** Should `marubeni` see internal workflow/reviewer comments (`item_workflow_events`)? Proposed default is no (mirrors the External API's `history:read` opt-in scope, D3 in § 12.7) — confirm this matches what Marubeni actually needs to do their review.
 
 ## 10. Timeline Considerations
 
@@ -368,7 +387,7 @@ Full DDL lives in `supabase/schema.sql`.
 5. **Comment/history thread visible to the User**, not just the latest rejection reason (P1 above) — important once an item bounces back and forth more than once; losing earlier context makes rework slower, not faster.
 6. **Evidence file versioning, not overwriting** — if a User re-uploads evidence after a rejection, keep the prior file(s) linked to the prior workflow event rather than replacing them. Matters for audit defensibility (a reviewer/auditor should be able to see what evidence existed at each decision point, not just the latest).
 7. **Exportable decision packet** (PDF or structured export) per item or per category — the actual Marubeni submission will likely want a clean summary of final decisions + evidence references, not a live dashboard link. Worth scoping once the workflow itself is stable.
-8. **A distinct read-only "external auditor" experience** — if Marubeni or an external auditor ever needs direct access instead of a report handoff, today's `read_only` role already covers "can't edit," but consider whether they should see the full workflow history/comments or only final decisions.
+8. **A distinct read-only "external auditor" experience** — if Marubeni or an external auditor ever needs direct access instead of a report handoff, today's `read_only` role already covers "can't edit," but consider whether they should see the full workflow history/comments or only final decisions. *(Proposed, v1.9, 2026-09-08): the stakeholder has since asked for exactly this — a `marubeni` role, see § 13.7 — with view access plus two narrow write actions (Remark, manual Box sync). Not yet built; the workflow-history-visibility question raised here is answered as "no, by default" in § 13.7's design, still open to confirm.)*
 9. **Basic concurrency guard on workflow actions** — e.g., if a Reviewer and an Approver somehow act on the same item near-simultaneously (unlikely but possible once items move faster through a formal queue), the BFF should check the item's current `workflow_state` before applying a transition and reject stale actions with a clear "this item already moved" error, rather than silently applying an action against a state that no longer exists.
 
 ## 12. External Read API (v1.6–v1.7b)
@@ -446,3 +465,89 @@ Every error response shares one shape — `{ "error": { "code": "...", "message"
 The first production deployment of this API (2026-08-27) logged requests in a `try/finally` block **around** the JSON response — i.e., the audit-log write was `await`-ed only *after* `res.status(200).json(...)` had already been sent. Live testing immediately after deploy showed only 1 of 9 real requests actually produced an `api_request_log` row, including a `403` that should have been logged. Vercel's Node.js runtime does not reliably keep a function invocation alive for work that starts only after the response has been flushed to the client — a gap invisible to any offline/local test, since a plain Node process has no equivalent teardown behavior.
 
 The fix (shipped same day, hotfix PR): **log first, then respond.** Every `/api/v1/*` exit point — success and every error — now writes its `api_request_log` row before calling `res.json()`, so the insert always completes while the function is unambiguously still executing. Verified by firing 9 varied requests (200/400/401/403/404) at production after the fix: 9/9 logged. This is recorded here specifically so nobody "cleans up" the ordering in `lib/apiAuth.js`'s `respond()`/`respondError()` later without knowing why it's like that.
+
+## 13. Box.com Remark Sync (Proposed — v1.9, not yet built)
+
+*Requested by the stakeholder ("ปรับ prd เพิ่ม ให้สามารถ config path สำหรับเชื่อม box.com เพื่อดึง Status ที่ได้รับ comment กลับมา รวมถึง สามารถ sync status กลับ box.com ได้ด้วย") on 2026-09-08. This section is a spec only — no code, schema, or Box app has been built yet. It exists so the design (and the two decisions already made below) survives to whenever build actually starts.*
+
+### 13.1 Problem Statement
+
+Evidence for each ITGR item already tends to live in a Box folder — that's where reviewers, auditors, or the wider team naturally leave comments while looking at the actual files, not inside the ITGR dashboard. Today those two places are disconnected: a comment left in Box is invisible in ITGR unless someone manually re-types it into the item's note, and there is no way for someone reading Box to see the item's current ITGR status without being handed a link and a login.
+
+### 13.2 Decisions (stakeholder, 2026-09-08)
+
+| # | Question | Decision | Why it matters |
+|---|---|---|---|
+| D1 | Is the configured Box path a single file or a folder? | **Folder** shared link (e.g. `https://app.box.com/s/...`), one per item — matches how evidence is actually organized, and matches the example the stakeholder gave | Box's Comments API only supports comments on **files**, never folders (a Box product limitation, not an API gap — see § 13.4). A folder-link decision means the sync layer must resolve *which file inside the folder* to read/write, not just hit one fixed endpoint. |
+| D2 | Does a synced Box comment affect the real compliance `status`? | **No — it maps to the checklist's Remark concept only.** Informational, never a write to `status`/`workflow_state` | Mirrors the v1.7 self-assessment separation exactly (§ 6, "Self-assessment is stored separately from `status`"): only the User → Reviewer → Approver workflow may set a compliance verdict (§ Goal 6). A Box comment can come from anyone with folder access, whose identity and intent ITGR has no way to verify against the approval workflow's segregation-of-duties model — letting it write `status` directly would let someone bypass Review/Approval entirely. |
+| D3 | Should the person supplying the Remark get a real ITGR login, not just Box comment access? | **Yes — a new role, `marubeni`** (§ 13.7), that can view the dashboard, write the Remark in-app, and manually trigger a push to Box | Requested by the stakeholder on 2026-09-08 so the Marubeni-side reviewer isn't limited to commenting in Box and waiting for the next poll cycle. This is a real scope change worth naming explicitly — see § 13.7 for the tension it raises against this PRD's own `read_only`/internal-tool framing. |
+
+### 13.3 Goals
+
+| # | Goal |
+|---|---|
+| G1 | An item's configured Box folder is a two-way source of context: the latest human remark left in Box shows up in ITGR without anyone re-typing it |
+| G2 | Someone working from Box (not logged into ITGR) can see the item's current status without being handed a dashboard link |
+| G3 | Neither direction of sync can ever become a backdoor around the approval workflow (§ D2 above) |
+| G4 | The sync never loops on itself — a comment ITGR posts must never be re-imported as if a human wrote it |
+
+### 13.4 The folder-vs-file constraint, and how the sync resolves it
+
+Box does not support comments on folders at all — not an API restriction to work around, a feature that doesn't exist in the product. Since D1 fixed the configured path as a **folder** link, the sync layer needs a rule for which file inside that folder is "the" comment thread:
+
+- **Pull:** list every file in the configured folder, fetch each file's comments, and take the single most recent comment **not authored by the ITGR Box service account** (see § 13.6) across all of them as the new `box_remark`. Remember which file it came from (`box_sync_file_id`) so push replies land in the same thread instead of starting a new one on a different file.
+- **Push:** reply into `box_sync_file_id` if a prior pull has already identified an active thread; otherwise (no comments exist yet anywhere in the folder) fall back to the most recently modified file in the folder, or skip posting and log a no-op if the folder is empty.
+
+This "most recent comment wins" heuristic needs real usage to validate — flagged in § 13.10 rather than assumed correct on paper.
+
+### 13.5 Data Model Additions
+
+See § 7 "v1.9 additions" for the full column list. In short: `item_status.box_url` (the configured folder link), `box_remark`/`box_remark_by`/`box_remark_at` (what was pulled), `box_sync_file_id`/`box_last_comment_id` (bookkeeping), and a new append-only `box_sync_log` table mirroring `api_request_log`'s role — every pull/push attempt, successful or not, is auditable after the fact (same principle as § Goal 4 and § 12.4).
+
+### 13.6 Authentication & Sync Mechanics
+
+- **Box auth:** a single service-level connection for the whole system, not per-user OAuth — a Box Custom App using Client Credentials Grant / a service account, configured once via Vercel env vars (`BOX_CLIENT_ID`, `BOX_CLIENT_SECRET`, `BOX_ENTERPRISE_ID`), following the same pattern already used for `API_TOKEN_PEPPER`/`PIN_PEPPER`/`SUPABASE_SERVICE_ROLE_KEY`. **Requires a Box enterprise admin to authorize the Custom App before any of this works** — an external dependency outside this codebase, same class as "a Supabase project must be provisioned" (§ 10). Flagged as blocking in § 9.
+- **Pull:** a scheduled Vercel Cron job (proposed every 15–30 min, § 9) iterates items with `box_url` set, resolves the shared link to a folder (`GET /shared_items` with the `BoxApi: shared_link=...` header), lists its files, and fetches new comments per § 13.4.
+- **Push:** triggered by the same points that already write `item_workflow_events`/`audit_log` today (submit / review / approve / reopen) — if `box_url` is set, post a new comment shaped `[ITGR] สถานะปัจจุบัน: <status> — อัปเดตโดย <actor> เมื่อ <timestamp>`.
+- **Loop prevention (G4):** every comment ITGR posts is tagged with the `[ITGR]` prefix; the pull job unconditionally skips any comment carrying that tag, so a pushed comment can never be re-imported as a new human remark on the next poll cycle.
+- **Comment syntax on the human side:** none required — unlike a status-parsing design, because D2 fixed this as a plain-text Remark (not a status write), there's no controlled vocabulary to enforce. Whatever the last human comment says, verbatim, becomes `box_remark`.
+
+### 13.7 The `marubeni` Role (Decision D3)
+
+`marubeni` is a **new value in the `users.role` check constraint** — a sixth role alongside `admin`/`user`/`reviewer`/`approver`/`read_only` (§ 4a). It represents an external Marubeni-side reviewer, and is deliberately **not** part of the internal preparer → reviewer → approver chain:
+
+| Capability | `marubeni` | Why |
+|---|---|---|
+| View all tabs | ✅ | Same baseline as `read_only` |
+| Edit Owner / Evidence / ClickUp / trigger workflow actions | ❌ | Not part of AutoCorp's internal workflow (§ 4a) — same restriction as `read_only` |
+| View workflow history / internal reviewer comments (`item_workflow_events`) | ❌ by default | Mirrors the External API's D3 decision (§ 12.7): internal review comments can discuss unresolved issues plainly and name people — a role outside the internal chain shouldn't see that by default. Revisit if the actual need turns out broader. |
+| Write the Remark field in-app | ✅ *(new)* | The whole point of the role — an in-app alternative to leaving a Box comment, for whoever is "the person who supplies the Remark" |
+| Trigger "Sync to Box" manually | ✅ *(new)* | Push current status + remark to Box immediately, instead of waiting for a status-change trigger or the next poll cycle |
+
+**A tension worth naming, not silently resolving:** this PRD's original Non-Goals (§ 3) frame ITGR as "an internal tool for a small, known set of COE&S/ATC staff, not a public-facing product," and the External API's own Non-Goals (§ 12.3) explicitly parked "direct access for Marubeni or other external parties" pending "per-token category scoping, mandatory expiry, and a data-use agreement that don't exist yet." Introducing a real `marubeni` login is exactly that access — a deliberate scope change, not a natural extension of `read_only`. It also happens to be what § 11's Recommendation 8 ("a distinct read-only external auditor experience") was anticipating. Flagging this explicitly rather than adding the role as if it were routine — worth an explicit go-ahead before real Marubeni accounts are issued, same as any other access-control decision in this document.
+
+**Data model:** `item_status.box_remark_source` (text, `'box'` \| `'app'`, new field beyond § 13.5's original list) records whether a given `box_remark` came from a real Box comment (pulled) or was typed in-app by a `marubeni`/`admin` user — keeping provenance visible is the same instinct behind keeping `self_assessment_note` separate from workflow notes (v1.7).
+
+**New endpoints (draft):** `PATCH /api/items/:no/box-remark` (role: `marubeni`, `admin`) — write an in-app Remark, sets `box_remark_source='app'`. `POST /api/items/:no/box-sync` (role: `marubeni`, `admin`) — push the current status + remark to Box immediately; writes a `box_sync_log` row same as the automatic push (§ 13.6), with `triggered_by` recorded.
+
+**Open question this role raises specifically:** who are the real Marubeni-side people who'd get one of these accounts, and who at AutoCorp is authorized to issue PIN logins to an external party — this is a policy question, not an engineering one, and sits above (not instead of) the existing "who holds initial admin access" open question (§ 9).
+
+### 13.8 Functional Requirements (draft)
+
+- Tracker's expanded item detail gets a new **Box Folder** field (`box_url`) alongside Owner, Evidence, and ClickUp Task — same edit rule as ClickUp (editable by `user`/`admin`, always editable regardless of `workflow_state`, since it's a reference link, not compliance evidence).
+- A new **"Remark from Box"** panel, clearly visually distinct from the sanctioned Evidence/note field and from the v1.7 self-assessment panel, showing `box_remark`, `box_remark_by`, `box_remark_at`, `box_remark_source` — labeled plainly enough that nobody mistakes it for an approved compliance statement. Read-only for everyone except `marubeni`/`admin` (§ 13.7), who get an edit control and a "Sync to Box" button in the same panel.
+- Pull and push both write to `box_sync_log` on every attempt (success or failure, automatic or manually triggered), extending this project's consistent "every automated action is auditable" principle (§ Goal 4, § 12.4, § 13.5).
+
+### 13.9 Non-Goals
+
+| Not doing (v1.9 proposal) | Why |
+|---|---|
+| Writing `status`/`workflow_state` from a Box comment | D2 (§ 13.2) — would bypass the approval workflow's segregation of duties |
+| Real-time push via Box Webhooks | Would need a public endpoint + signature verification + webhook registration — more infra than a v1 needs; scheduled polling is simpler and sufficient for an informational remark. Candidate for later if 15–30 min latency proves too slow. |
+| A configurable comment syntax/parser | Not needed — D2 means the synced value is free-text, not an enum to parse |
+| Syncing anything other than the single most-recent comment | No comment history/thread view inside ITGR in v1 — only the latest remark, matching the scope of "Remark," not a full conversation log |
+| Attaching or downloading the Box files themselves into ITGR | Out of scope — this is a link + comment sync only, unrelated to the existing Supabase Storage evidence flow (v1.3) |
+
+### 13.10 Open Questions
+
+See § 9 for the full list (tagged `(v1.9, proposed)`) — the two genuinely blocking items before any build work starts are naming who can authorize a Box Custom App on the Box enterprise side, and confirming the `marubeni` external-access decision (§ 13.7) with whoever owns AutoCorp/Marubeni's data-access policy.

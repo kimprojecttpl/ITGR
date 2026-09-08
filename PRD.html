@@ -62,6 +62,7 @@
       <a class="navlink" href="#f-lang">6. TH/EN Toggle</a>
       <a class="navlink" href="#f-fy2026">7. FY2026 Alignment</a>
       <a class="navlink" href="#f-api">8. External Read API</a>
+      <a class="navlink" href="#f-box">9. Box.com Remark Sync <span class="text-amber-500">(proposed)</span></a>
 
       <div class="navgroup">รายละเอียดทางเทคนิค</div>
       <a class="navlink" href="#data-model">Data Model</a>
@@ -82,6 +83,7 @@
           <span class="px-2.5 py-1 rounded-full bg-green-100 text-green-700 font-medium">✓ v1.0–v1.8 shipped</span>
           <span class="px-2.5 py-1 rounded-full bg-green-100 text-green-700 font-medium">✓ ไม่มี deploy gate ค้าง</span>
           <span class="px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 font-medium">Owner: COE&amp;S — AutoCorp (ATC)</span>
+          <span class="px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 font-medium">📝 v1.9 Box.com Remark Sync — spec only, ยังไม่ได้สร้าง</span>
         </div>
         <p class="text-sm text-slate-600 leading-relaxed mb-3">
           ITGR Dashboard เป็นระบบติดตามการปฏิบัติตาม <b>Marubeni Group IT Governance Rules (ITGR) Checklist</b> (96 ข้อกำหนด, 8 หมวด) ของ AutoCorp — เดิมเป็นไฟล์ HTML เดี่ยวที่เก็บสถานะไว้ใน <code class="bg-slate-100 px-1 rounded text-xs">localStorage</code> ของเบราว์เซอร์ (ข้อมูลไม่แชร์กัน ไม่มี audit trail ไม่มีการควบคุมสิทธิ์) — ปัจจุบันย้ายเป็นระบบหลายผู้ใช้เต็มรูปแบบบน <b>Supabase + Vercel serverless BFF</b> พร้อม PIN login, RBAC, workflow อนุมัติแบบแบ่งแยกหน้าที่ (User → Reviewer → Approver), และ API สำหรับระบบภายนอก
@@ -109,6 +111,7 @@
             <tr><td class="px-3 py-2 font-mono font-bold">1.6</td><td class="px-3 py-2 text-slate-400">2026-08-27</td><td class="px-3 py-2">External Read API (<code class="bg-slate-100 px-1 rounded">/api/v1/*</code>) — bearer token, อ่านอย่างเดียว, scoped, rate-limited, มี audit log</td></tr>
             <tr><td class="px-3 py-2 font-mono font-bold">1.7</td><td class="px-3 py-2 text-slate-400">2026-09-03</td><td class="px-3 py-2">FY2026 alignment — รีเฟรชข้อมูลจาก workbook ใหม่, คืนสถานะ "Not Applicable", เพิ่ม self-assessment + Marubeni Official Score</td></tr>
             <tr><td class="px-3 py-2 font-mono font-bold">1.7b</td><td class="px-3 py-2 text-slate-400">2026-09-08</td><td class="px-3 py-2">self_assessment บน External Read API (ปิดช่องว่างที่ v1.7 ยังไม่ครอบคลุม API ภายนอก)</td></tr>
+            <tr class="bg-amber-50/50"><td class="px-3 py-2 font-mono font-bold text-amber-700">1.9</td><td class="px-3 py-2 text-slate-400">2026-09-08 (spec)</td><td class="px-3 py-2"><b class="text-amber-700">PROPOSED — ยังไม่ได้สร้าง</b> · Box.com Remark Sync — config ลิงก์โฟลเดอร์ Box ต่อข้อ ดึง comment ล่าสุดเข้ามาเป็น Remark (ไม่แตะ status จริง) และ sync สถานะกลับไปเป็น comment</td></tr>
           </tbody>
         </table>
       </div>
@@ -166,16 +169,18 @@
         <p class="text-xs text-slate-400 mb-2"><code class="bg-slate-100 px-1 rounded">read_write</code> เดิมถูกแยกเป็น 3 บทบาทเฉพาะขั้นตอน — คนเตรียมหลักฐานไม่ใช่คนอนุมัติเอง</p>
         <div class="overflow-x-auto">
           <table class="w-full text-left text-xs">
-            <thead><tr class="text-slate-500"><th class="py-1.5">สิทธิ์</th><th class="py-1.5 text-center">admin</th><th class="py-1.5 text-center">user</th><th class="py-1.5 text-center">reviewer</th><th class="py-1.5 text-center">approver</th><th class="py-1.5 text-center">read_only</th></tr></thead>
+            <thead><tr class="text-slate-500"><th class="py-1.5">สิทธิ์</th><th class="py-1.5 text-center">admin</th><th class="py-1.5 text-center">user</th><th class="py-1.5 text-center">reviewer</th><th class="py-1.5 text-center">approver</th><th class="py-1.5 text-center">read_only</th><th class="py-1.5 text-center text-amber-600">marubeni <span class="text-[9px]">(proposed)</span></th></tr></thead>
             <tbody class="divide-y divide-slate-100">
-              <tr><td class="py-1.5">แก้ Owner/Evidence/ClickUp</td><td class="text-center">✅</td><td class="text-center">✅</td><td class="text-center">❌</td><td class="text-center">❌</td><td class="text-center">❌</td></tr>
-              <tr><td class="py-1.5">Submit for Approval</td><td class="text-center">✅</td><td class="text-center">✅</td><td class="text-center">❌</td><td class="text-center">❌</td><td class="text-center">❌</td></tr>
-              <tr><td class="py-1.5">Review: OK/Reject + comment</td><td class="text-center">✅</td><td class="text-center">❌</td><td class="text-center">✅</td><td class="text-center">❌</td><td class="text-center">❌</td></tr>
-              <tr><td class="py-1.5">ตัดสินสุดท้าย (Compliant/CwC/NC)</td><td class="text-center">✅</td><td class="text-center">❌</td><td class="text-center">❌</td><td class="text-center">✅</td><td class="text-center">❌</td></tr>
+              <tr><td class="py-1.5">แก้ Owner/Evidence/ClickUp</td><td class="text-center">✅</td><td class="text-center">✅</td><td class="text-center">❌</td><td class="text-center">❌</td><td class="text-center">❌</td><td class="text-center">❌</td></tr>
+              <tr><td class="py-1.5">Submit for Approval</td><td class="text-center">✅</td><td class="text-center">✅</td><td class="text-center">❌</td><td class="text-center">❌</td><td class="text-center">❌</td><td class="text-center">❌</td></tr>
+              <tr><td class="py-1.5">Review: OK/Reject + comment</td><td class="text-center">✅</td><td class="text-center">❌</td><td class="text-center">✅</td><td class="text-center">❌</td><td class="text-center">❌</td><td class="text-center">❌</td></tr>
+              <tr><td class="py-1.5">ตัดสินสุดท้าย (Compliant/CwC/NC)</td><td class="text-center">✅</td><td class="text-center">❌</td><td class="text-center">❌</td><td class="text-center">✅</td><td class="text-center">❌</td><td class="text-center">❌</td></tr>
+              <tr class="bg-amber-50/40"><td class="py-1.5">เขียน Remark ในแอปเอง</td><td class="text-center">✅</td><td class="text-center">❌</td><td class="text-center">❌</td><td class="text-center">❌</td><td class="text-center">❌</td><td class="text-center">✅</td></tr>
+              <tr class="bg-amber-50/40"><td class="py-1.5">สั่ง "Sync to Box" ด้วยตัวเอง</td><td class="text-center">✅</td><td class="text-center">❌</td><td class="text-center">❌</td><td class="text-center">❌</td><td class="text-center">❌</td><td class="text-center">✅</td></tr>
             </tbody>
           </table>
         </div>
-        <p class="text-[11px] text-slate-400 mt-2">💡 <code class="bg-slate-100 px-1 rounded">admin</code> ทำได้ทุกขั้น (break-glass สำรองกรณีคนไม่พร้อม) — บทบาทอื่นทำได้เฉพาะขั้นตอนของตัวเองเท่านั้น</p>
+        <p class="text-[11px] text-slate-400 mt-2">💡 <code class="bg-slate-100 px-1 rounded">admin</code> ทำได้ทุกขั้น (break-glass สำรองกรณีคนไม่พร้อม) — บทบาทอื่นทำได้เฉพาะขั้นตอนของตัวเองเท่านั้น · <code class="bg-slate-100 px-1 rounded">marubeni</code> <b>(v1.9, proposed)</b> ไม่ใช่ขั้นตอนใน workflow ภายใน แต่เป็นบทบาทสำหรับคนฝั่ง Marubeni โดยเฉพาะ — รายละเอียดที่ § 9</p>
       </div>
     </section>
 
@@ -346,6 +351,49 @@
       </div>
     </section>
 
+    <!-- ===================== FEATURE 9: BOX SYNC (PROPOSED) ===================== -->
+    <section id="f-box" class="anchor-offset">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="text-2xl">📦</span>
+        <h2 class="text-xl font-bold text-blue-800">9. Box.com Remark Sync</h2>
+        <span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-bold">v1.9 · proposed — ยังไม่ได้สร้าง</span>
+      </div>
+      <div class="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-800 mb-3">
+        📝 <b>สถานะ: ร่างสเปกเท่านั้น</b> — ยังไม่มีโค้ด ไม่มี schema migration ไม่มีการเชื่อมต่อ Box จริง ส่วนนี้บันทึกไว้เป็นแบบที่ตกลงกันแล้ว 2 ข้อ เพื่อไม่ให้ต้องตัดสินใจใหม่ตอนเริ่มสร้างจริง
+      </div>
+      <div class="bg-white rounded-xl border border-slate-200 p-5 text-sm text-slate-600 leading-relaxed space-y-3">
+        <p>วัตถุประสงค์: แต่ละข้อ config ลิงก์โฟลเดอร์ Box ได้ (เหมือนช่อง ClickUp Task link เดิม) — <b>ดึง</b> comment ล่าสุดที่คนพิมพ์ไว้ใน Box เข้ามาแสดงใน ITGR โดยไม่ต้องพิมพ์ซ้ำ และ <b>ส่ง</b> สถานะปัจจุบันกลับไปเป็น comment ใน Box เมื่อสถานะเปลี่ยน เพื่อให้คนที่ทำงานอยู่ใน Box เห็นสถานะได้โดยไม่ต้อง login เข้าแดชบอร์ด</p>
+
+        <div class="bg-slate-50 border border-slate-200 rounded-lg p-3">
+          <p class="font-bold text-slate-700 text-xs mb-2">✅ ตัดสินใจแล้ว (stakeholder, 2026-09-08)</p>
+          <ul class="list-disc pl-5 space-y-1.5 text-xs">
+            <li><b>ลิงก์ที่ config เป็นลิงก์ "โฟลเดอร์"</b> ไม่ใช่ไฟล์เดี่ยว — ตรงกับตัวอย่างที่ให้มาและวิธีใช้งานจริง (หลักฐานอยู่รวมกันเป็นโฟลเดอร์)</li>
+            <li><b>Comment ที่ดึงมาถือเป็น "Remark" เท่านั้น ไม่ใช่การเขียนทับ status จริง</b> — เหมือนหลักการที่ใช้กับ self-assessment (v1.7): มีแค่ User → Reviewer → Approver เท่านั้นที่ตั้งค่าผลการตัดสิน compliance ได้ ถ้าปล่อยให้ comment จาก Box เขียนทับ status ตรง ๆ จะเปิดช่องให้ใครก็ได้ที่มีสิทธิ์คอมเมนต์ใน Box "อนุมัติ" ข้อได้โดยไม่ผ่าน workflow</li>
+            <li><b>เพิ่ม role ใหม่ <code class="bg-white/60 px-1 rounded">marubeni</code></b> — คนฝั่ง Marubeni ที่เป็นเจ้าของ Remark: เข้าแอปดูได้, เขียน Remark ในแอปได้เอง (ไม่ต้องผ่าน Box comment เสมอไป), และสั่ง "Sync to Box" ด้วยตัวเองได้ทันที ไม่ต้องรอรอบ poll หรือรอ status เปลี่ยน</li>
+          </ul>
+        </div>
+
+        <div class="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-800">
+          ⚠️ <b>ประเด็นที่ต้องขอ go-ahead ก่อน ไม่ใช่แค่ทำเลย:</b> เดิม PRD นี้กำหนดไว้ตั้งแต่ § Non-Goals ว่า ITGR เป็น "เครื่องมือภายในทีมเล็กเท่านั้น" และ § External API เองก็เคยพักเรื่อง "ให้ Marubeni หรือคนนอกเข้าถึงตรง" ไว้เพราะยังไม่มี data-use agreement — role <code class="bg-white/60 px-1 rounded">marubeni</code> คือการเปิดสิทธิ์เข้าระบบจริงให้คนนอกเป็นครั้งแรก จึงควรได้รับการยืนยันจากเจ้าของนโยบายข้อมูลของ AutoCorp/Marubeni ก่อนออกบัญชีจริง ไม่ใช่แค่การตัดสินใจเชิงเทคนิค
+        </div>
+
+        <div class="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 text-xs">
+          ⚠️ <b>ข้อจำกัดทางเทคนิคที่ต้องออกแบบรองรับ:</b> Box ไม่รองรับ comment บนโฟลเดอร์ (เป็นข้อจำกัดของตัวผลิตภัณฑ์ Box เอง ไม่ใช่แค่ API) — เพราะฉะนั้นระบบต้องเลือกว่าจะอ่าน/เขียน comment ที่ "ไฟล์ไหน" ในโฟลเดอร์นั้น แนวทางที่ร่างไว้: <b>ดึง</b> = ไล่ดู comment ทุกไฟล์ในโฟลเดอร์ เอา comment ล่าสุดที่ไม่ได้มาจากบอทของ ITGR เอง มาเป็น Remark และจำไว้ว่ามาจากไฟล์ไหน · <b>ส่ง</b> = ตอบกลับไฟล์เดิมที่เจอ comment ล่าสุด (หรือไฟล์ที่แก้ล่าสุดถ้ายังไม่เคยมี comment เลย)
+        </div>
+
+        <ul class="list-disc pl-5 space-y-1.5">
+          <li>ช่องใหม่ในหน้า Tracker: <b>Box Folder</b> (<code class="bg-slate-100 px-1 rounded text-xs">box_url</code>) แก้ไขได้เสมอเหมือน ClickUp link — เป็นลิงก์อ้างอิง ไม่ใช่หลักฐาน compliance</li>
+          <li>Panel ใหม่แบบ read-only <b>"Remark from Box"</b> แยกรูปแบบชัดเจนจาก Evidence/note จริงและจาก self-assessment panel — ป้องกันไม่ให้ใครเข้าใจผิดว่าเป็นการอนุมัติ</li>
+          <li>ดึงข้อมูลด้วย Vercel Cron (เสนอ 15–30 นาที/ครั้ง) ไม่ใช่ real-time webhook — เพียงพอสำหรับข้อมูลที่เป็นแค่ remark อ้างอิง</li>
+          <li>ทุกครั้งที่ดึง/ส่งจะบันทึกลง <code class="bg-slate-100 px-1 rounded text-xs">box_sync_log</code> (append-only) — ตรวจสอบย้อนหลังได้เหมือน audit log อื่น ๆ ในระบบ</li>
+          <li>ป้องกัน sync วนลูป: comment ที่ ITGR โพสต์เองจะมี tag <code class="bg-slate-100 px-1 rounded text-xs">[ITGR]</code> กำกับ — ตอนดึงข้อมูลจะข้าม comment ที่มี tag นี้เสมอ ไม่งั้นจะดึง comment ของตัวเองกลับมาเข้าใจผิดว่าเป็นของคน</li>
+          <li>ต้องมี Box admin ระดับ enterprise อนุมัติ Box Custom App ก่อนถึงจะเชื่อมได้จริง — เป็นขั้นตอนนอกเหนือโค้ด ยังไม่มีเจ้าของงานนี้ (blocking item ใน § คำถามค้าง)</li>
+        </ul>
+
+        <p class="text-xs text-slate-400 pt-1">สเปกเต็ม + ตารางการตัดสินใจ + non-goals: <code class="bg-slate-100 px-1 rounded">PRD.md § 13</code></p>
+      </div>
+    </section>
+
     <!-- ===================== DATA MODEL ===================== -->
     <section id="data-model" class="anchor-offset">
       <h2 class="text-xl font-bold text-blue-800 mb-3">🗄️ Data Model</h2>
@@ -364,6 +412,9 @@
               <tr><td class="py-1.5 font-mono align-top">audit_log</td><td class="py-1.5">user_id, item_no, field, old_value, new_value, created_at</td></tr>
               <tr><td class="py-1.5 font-mono align-top">api_tokens</td><td class="py-1.5">id, name, token_hash (unique), prefix, scopes (text[]), active, expires_at (nullable), last_used_at, created_by</td></tr>
               <tr><td class="py-1.5 font-mono align-top">api_request_log</td><td class="py-1.5">token_id (FK, on delete set null), path, query (jsonb), status, duration_ms, created_at — append-only, ใช้คำนวณ rate limit ด้วย</td></tr>
+              <tr class="bg-amber-50/40"><td class="py-1.5 font-mono align-top text-amber-700">item_status <span class="text-[10px]">(v1.9 proposed)</span></td><td class="py-1.5">+ box_url (ลิงก์โฟลเดอร์), box_remark/box_remark_by/box_remark_at/box_remark_source ('box'|'app'), box_sync_file_id, box_last_comment_id — <b>ยังไม่ได้สร้างจริง</b></td></tr>
+              <tr class="bg-amber-50/40"><td class="py-1.5 font-mono align-top text-amber-700">box_sync_log <span class="text-[10px]">(v1.9 proposed)</span></td><td class="py-1.5">item_no, direction (pull/push), box_file_id, box_comment_id, remark_text, success, error, triggered_by (FK → users, เฉพาะ manual sync), created_at — append-only — <b>ยังไม่ได้สร้างจริง</b></td></tr>
+              <tr class="bg-amber-50/40"><td class="py-1.5 font-mono align-top text-amber-700">users.role <span class="text-[10px]">(v1.9 proposed)</span></td><td class="py-1.5">เพิ่มค่าที่ 6: <code class="bg-white px-1 rounded">marubeni</code> — บทบาทนอกสาย workflow ภายใน — <b>ยังไม่ได้สร้างจริง</b></td></tr>
             </tbody>
           </table>
         </div>
@@ -409,6 +460,11 @@
           <li><b>(v1.6)</b> 60 request/นาทีพอไหมสำหรับ automation แบบ batch — รอดูการใช้จริงเดือนแรก</li>
           <li><b>(v1.6)</b> เก็บ <code class="bg-slate-100 px-1 rounded">api_request_log</code> นานแค่ไหน — เสนอ 90 วัน ยังไม่ยืนยัน</li>
           <li><b>(v1.6)</b> ควรทำ <code class="bg-slate-100 px-1 rounded">openapi.json</code> + IP allowlist ต่อ token ไหม — ยังไม่ได้ตัดสินใจ (ดู § 8 P1 roadmap)</li>
+          <li><b class="text-amber-700">(v1.9, proposed — blocking)</b> ใครที่ AutoCorp/Marubeni อนุมัติ Box Custom App ระดับ enterprise ได้ — เป็นขั้นตอนนอกโค้ด ต้องมีก่อนเริ่มสร้างจริง</li>
+          <li><b>(v1.9, proposed)</b> ความถี่ poll ที่เหมาะสม — เสนอ 15–30 นาที ยังไม่ยืนยัน</li>
+          <li><b>(v1.9, proposed)</b> การส่ง comment กลับ Box ควรทำเมื่อ status เปลี่ยนเท่านั้น หรือรวม Owner/Evidence ด้วย — เสนอเฉพาะ status ก่อน</li>
+          <li><b class="text-amber-700">(v1.9, proposed — blocking ก่อนออกบัญชีจริง)</b> role <code class="bg-slate-100 px-1 rounded">marubeni</code> คือการเปิดให้คนนอก AutoCorp login เข้าระบบได้จริงเป็นครั้งแรก — ต้องขอ go-ahead จากเจ้าของนโยบายข้อมูลก่อน ไม่ใช่แค่ตัดสินใจเชิงเทคนิค</li>
+          <li><b>(v1.9, proposed)</b> <code class="bg-slate-100 px-1 rounded">marubeni</code> ควรเห็นประวัติ workflow/comment ภายใน (Reviewer/Approver) ด้วยไหม — ค่าเริ่มต้นที่เสนอคือ "ไม่เห็น" (เหมือน scope history:read ของ External API)</li>
         </ul>
       </div>
     </section>
