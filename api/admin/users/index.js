@@ -2,7 +2,10 @@ import { getSupabase } from "../../../lib/supabase.js";
 import { requireRole } from "../../../lib/auth.js";
 import { hashPin } from "../../../lib/pin.js";
 
-const VALID_ROLES = ["admin", "user", "reviewer", "approver", "read_only"];
+// v1.9 (proposed): `marubeni` is an external Marubeni-side reviewer, not
+// part of the internal workflow chain — see PRD.md § 13.7 before issuing a
+// real account (it's a genuine access-policy decision, not routine).
+const VALID_ROLES = ["admin", "user", "reviewer", "approver", "read_only", "marubeni"];
 
 export default async function handler(req, res) {
   const session = requireRole(req, res, "admin");
@@ -50,6 +53,12 @@ export default async function handler(req, res) {
     if (error) {
       if (error.code === "23505") {
         res.status(409).json({ error: "PIN already in use" });
+        return;
+      }
+      // role='marubeni' before the v1.9 migration has run — the DB's own
+      // check constraint doesn't know that value yet.
+      if (error.code === "23514" && role === "marubeni") {
+        res.status(501).json({ error: "The marubeni role (v1.9) is not migrated yet — see supabase/schema.sql" });
         return;
       }
       res.status(500).json({ error: "Failed to create user" });

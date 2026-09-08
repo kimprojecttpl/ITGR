@@ -2,7 +2,8 @@ import { getSupabase } from "../../../lib/supabase.js";
 import { requireRole } from "../../../lib/auth.js";
 import { hashPin } from "../../../lib/pin.js";
 
-const VALID_ROLES = ["admin", "user", "reviewer", "approver", "read_only"];
+// v1.9 (proposed): see PRD.md § 13.7 before issuing a real `marubeni` account.
+const VALID_ROLES = ["admin", "user", "reviewer", "approver", "read_only", "marubeni"];
 
 export default async function handler(req, res) {
   const session = requireRole(req, res, "admin");
@@ -57,6 +58,12 @@ export default async function handler(req, res) {
       .single();
 
     if (error) {
+      // role='marubeni' before the v1.9 migration has run — the DB's own
+      // check constraint doesn't know that value yet.
+      if (error.code === "23514" && updates.role === "marubeni") {
+        res.status(501).json({ error: "The marubeni role (v1.9) is not migrated yet — see supabase/schema.sql" });
+        return;
+      }
       res.status(500).json({ error: "Failed to update user" });
       return;
     }

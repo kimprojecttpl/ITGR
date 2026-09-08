@@ -346,3 +346,67 @@ alter table item_status add constraint item_status_self_assessment_check
   check (self_assessment is null or self_assessment in ('〇', '×', '-'));
 
 alter table item_status add column if not exists self_assessment_note text not null default '';
+
+-- =============================================================================
+-- v1.9 (PROPOSED — not a real Box connection yet): Box.com Remark Sync +
+-- the `marubeni` role. See PRD.md § 13 for the full spec and § 13.7 for the
+-- role. Safe to re-run.
+--
+-- This migration only adds columns/tables/roles the *application* can use
+-- once a real Box Custom App exists (PRD.md § 13.6, § 9 — still an open,
+-- blocking dependency outside this codebase). Running this SQL does not by
+-- itself connect anything to Box.
+-- =============================================================================
+
+-- ---------------------------------------------------------------------------
+-- New role: `marubeni`. Not part of the internal preparer -> reviewer ->
+-- approver chain (§ 4a) — represents an external Marubeni-side reviewer who
+-- can view the dashboard, write the Remark in-app, and trigger a manual
+-- Box sync. See PRD.md § 13.7 for the real scope-change tension this raises
+-- against this project's original "internal tool only" framing — get an
+-- explicit go-ahead before issuing a real `marubeni` account.
+-- ---------------------------------------------------------------------------
+alter table users drop constraint if exists users_role_check;
+alter table users add constraint users_role_check
+  check (role in ('admin', 'user', 'reviewer', 'approver', 'read_only', 'marubeni'));
+
+-- ---------------------------------------------------------------------------
+-- item_status: Box folder link + the synced/authored Remark. Deliberately
+-- separate from `status`/`workflow_state` (never written by the Box sync —
+-- decision D2, PRD.md § 13.2) and from `self_assessment_note` (a frozen
+-- snapshot of the FY2026 workbook import, not a live sync target).
+-- ---------------------------------------------------------------------------
+alter table item_status add column if not exists box_url            text not null default '';
+alter table item_status add column if not exists box_remark         text not null default '';
+alter table item_status add column if not exists box_remark_by      text not null default '';
+alter table item_status add column if not exists box_remark_at      timestamptz;
+alter table item_status add column if not exists box_remark_source  text; -- 'box' | 'app', null until first remark
+alter table item_status drop constraint if exists item_status_box_remark_source_check;
+alter table item_status add constraint item_status_box_remark_source_check
+  check (box_remark_source is null or box_remark_source in ('box', 'app'));
+alter table item_status add column if not exists box_sync_file_id   text; -- which file in the folder is the active thread (pull bookkeeping)
+alter table item_status add column if not exists box_last_comment_id text; -- dedupe + loop-prevention bookkeeping (pull)
+
+-- ---------------------------------------------------------------------------
+-- box_sync_log: append-only audit trail for every pull/push attempt,
+-- automatic or manually triggered — mirrors api_request_log's role (v1.6).
+-- `triggered_by` is set only for a manual "Sync to Box" (marubeni/admin);
+-- null for the automatic push-on-status-change and the scheduled pull.
+-- ---------------------------------------------------------------------------
+create table if not exists box_sync_log (
+  id            bigint generated always as identity primary key,
+  item_no       int not null references checklist_items (no) on delete cascade,
+  direction     text not null check (direction in ('pull', 'push')),
+  box_file_id   text,
+  box_comment_id text,
+  remark_text   text,
+  success       boolean not null,
+  error         text,
+  triggered_by  uuid references users (id) on delete set null,
+  created_at    timestamptz not null default now()
+);
+
+create index if not exists box_sync_log_item_no_idx on box_sync_log (item_no, created_at desc);
+
+alter table box_sync_log enable row level security;
+-- Same default-deny posture as every other table — service role (BFF) only.
