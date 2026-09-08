@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PRD — IT Governance Dashboard | AutoCorp</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  body{font-family:'Sarabun',system-ui,sans-serif;}
+  code, pre, .mono{font-family:'JetBrains Mono',ui-monospace,monospace;}
+  html{scroll-behavior:smooth;}
+  pre{background:#0f172a;color:#e2e8f0;border-radius:.75rem;padding:1rem 1.1rem;overflow-x:auto;font-size:.78rem;line-height:1.6;}
+  .anchor-offset{scroll-margin-top:5.5rem;}
+  ::-webkit-scrollbar{height:9px;width:9px;}
+  ::-webkit-scrollbar-thumb{background:#94a3b8;border-radius:6px;}
+  ::-webkit-scrollbar-track{background:#e2e8f0;}
+  .navlink{display:block;padding:.3rem .6rem;border-radius:.5rem;color:#475569;font-size:.82rem;}
+  .navlink:hover{background:#eff6ff;color:#1d4ed8;}
+  .navgroup{font-size:.7rem;text-transform:uppercase;letter-spacing:.04em;color:#94a3b8;font-weight:700;margin:.9rem 0 .25rem .6rem;}
+  .navgroup:first-child{margin-top:0;}
+  table{font-size:.85rem;}
+  th{white-space:nowrap;}
+  @media print{.noprint{display:none!important;}}
+</style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+<header class="bg-gradient-to-r from-blue-800 via-blue-700 to-sky-600 text-white noprint">
+  <div class="max-w-7xl mx-auto px-4 py-5 flex items-center justify-between flex-wrap gap-3">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center text-xl">🛡️</div>
+      <div>
+        <h1 class="text-lg sm:text-xl font-bold leading-tight">PRD — IT Governance Dashboard</h1>
+        <p class="text-blue-100 text-xs">AutoCorp (ATC) · v1.8 · ทุกฟีเจอร์ shipped และ verified live</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-2">
+      <a href="api-docs.html" class="text-xs px-3 py-1.5 rounded-lg bg-white/15 hover:bg-white/25">📘 API Docs</a>
+      <a href="index.html" class="text-xs px-3 py-1.5 rounded-lg bg-white/15 hover:bg-white/25">← กลับไปแดชบอร์ด</a>
+    </div>
+  </div>
+</header>
+
+<div class="max-w-7xl mx-auto px-4 py-8 grid md:grid-cols-[230px_1fr] gap-8">
+
+  <!-- ---------- SIDEBAR ---------- -->
+  <nav class="hidden md:block noprint">
+    <div class="sticky top-6 space-y-0.5">
+      <div class="navgroup">ภาพรวม</div>
+      <a class="navlink" href="#summary">สรุปผู้บริหาร</a>
+      <a class="navlink" href="#versions">ประวัติเวอร์ชัน</a>
+      <a class="navlink" href="#goals">เป้าหมาย &amp; Non-Goals</a>
+      <a class="navlink" href="#roles">สิทธิ์และบทบาท</a>
+
+      <div class="navgroup">ฟีเจอร์</div>
+      <a class="navlink" href="#f-auth">1. การยืนยันตัวตน</a>
+      <a class="navlink" href="#f-tracker">2. Checklist Tracker</a>
+      <a class="navlink" href="#f-radar">3. Radar &amp; Grade</a>
+      <a class="navlink" href="#f-workflow">4. Approval Workflow</a>
+      <a class="navlink" href="#f-reopen">5. Reopen for Edit</a>
+      <a class="navlink" href="#f-lang">6. TH/EN Toggle</a>
+      <a class="navlink" href="#f-fy2026">7. FY2026 Alignment</a>
+      <a class="navlink" href="#f-api">8. External Read API</a>
+
+      <div class="navgroup">รายละเอียดทางเทคนิค</div>
+      <a class="navlink" href="#data-model">Data Model</a>
+      <a class="navlink" href="#metrics">Success Metrics</a>
+      <a class="navlink" href="#open-questions">คำถามค้าง</a>
+      <a class="navlink" href="#timeline">Timeline &amp; Phasing</a>
+      <a class="navlink" href="#recommendations">ข้อเสนอแนะ</a>
+    </div>
+  </nav>
+
+  <!-- ---------- MAIN ---------- -->
+  <main class="space-y-10 pb-24 min-w-0">
+
+    <!-- ===================== SUMMARY ===================== -->
+    <section id="summary" class="anchor-offset">
+      <div class="bg-white rounded-2xl border border-slate-200 p-6">
+        <div class="flex flex-wrap gap-2 mb-4 text-xs">
+          <span class="px-2.5 py-1 rounded-full bg-green-100 text-green-700 font-medium">✓ v1.0–v1.8 shipped</span>
+          <span class="px-2.5 py-1 rounded-full bg-green-100 text-green-700 font-medium">✓ ไม่มี deploy gate ค้าง</span>
+          <span class="px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 font-medium">Owner: COE&amp;S — AutoCorp (ATC)</span>
+        </div>
+        <p class="text-sm text-slate-600 leading-relaxed mb-3">
+          ITGR Dashboard เป็นระบบติดตามการปฏิบัติตาม <b>Marubeni Group IT Governance Rules (ITGR) Checklist</b> (96 ข้อกำหนด, 8 หมวด) ของ AutoCorp — เดิมเป็นไฟล์ HTML เดี่ยวที่เก็บสถานะไว้ใน <code class="bg-slate-100 px-1 rounded text-xs">localStorage</code> ของเบราว์เซอร์ (ข้อมูลไม่แชร์กัน ไม่มี audit trail ไม่มีการควบคุมสิทธิ์) — ปัจจุบันย้ายเป็นระบบหลายผู้ใช้เต็มรูปแบบบน <b>Supabase + Vercel serverless BFF</b> พร้อม PIN login, RBAC, workflow อนุมัติแบบแบ่งแยกหน้าที่ (User → Reviewer → Approver), และ API สำหรับระบบภายนอก
+        </p>
+        <p class="text-sm text-slate-600 leading-relaxed">
+          เอกสารนี้ครอบคลุมทุกฟีเจอร์ตั้งแต่ v1.0 (migration พื้นฐาน) ถึง v1.8 (self-assessment บน External API) — verified ล่าสุด <b>2026-09-08</b> ว่าข้อมูลใน repo, ฐานข้อมูล production, และไฟล์ต้นฉบับ workbook FY2026 ตรงกันทั้งหมด (re-run การแตกไฟล์แล้วได้ผลลัพธ์เหมือนเดิมทุกตัวอักษร)
+        </p>
+      </div>
+    </section>
+
+    <!-- ===================== VERSION HISTORY ===================== -->
+    <section id="versions" class="anchor-offset">
+      <h2 class="text-xl font-bold text-blue-800 mb-3">📜 ประวัติเวอร์ชัน</h2>
+      <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <table class="w-full text-left">
+          <thead><tr class="bg-slate-50 text-xs text-slate-500"><th class="px-3 py-2 w-20">เวอร์ชัน</th><th class="px-3 py-2 w-28">วันที่</th><th class="px-3 py-2">สรุป</th></tr></thead>
+          <tbody class="divide-y divide-slate-100 text-xs">
+            <tr><td class="px-3 py-2 font-mono font-bold">1.0</td><td class="px-3 py-2 text-slate-400">2026-08-06</td><td class="px-3 py-2">Migration พื้นฐาน: ย้ายข้อมูลจาก localStorage → Supabase, เพิ่ม BFF, PIN login + RBAC 3 ระดับ (admin/read_write/read_only), audit log พื้นฐาน</td></tr>
+            <tr><td class="px-3 py-2 font-mono font-bold">1.1</td><td class="px-3 py-2 text-slate-400">2026-08-10</td><td class="px-3 py-2">Category Compliance Radar Chart — กราฟเรดาร์ 8 แกนพร้อมเกรด A–E ต่อหมวด</td></tr>
+            <tr><td class="px-3 py-2 font-mono font-bold">1.2</td><td class="px-3 py-2 text-slate-400">2026-08-10</td><td class="px-3 py-2">Overall Grade รวม 8 หมวด + สรุปสถานะแยกตามลำดับความสำคัญ (◎ สูงสุด / 〇 สำคัญ)</td></tr>
+            <tr><td class="px-3 py-2 font-mono font-bold">1.3</td><td class="px-3 py-2 text-slate-400">2026-08-10</td><td class="px-3 py-2">ClickUp task link ต่อข้อ + Approval Workflow เต็มรูปแบบ (User → Reviewer → Approver) พร้อม audit trail ทุก action</td></tr>
+            <tr><td class="px-3 py-2 font-mono font-bold">1.4</td><td class="px-3 py-2 text-slate-400">2026-08-10</td><td class="px-3 py-2">Reopen for Edit ("Request for Approval") — ปลดล็อกข้อที่อนุมัติแล้วเพื่อแก้ไขและส่งเข้า workflow ใหม่</td></tr>
+            <tr><td class="px-3 py-2 font-mono font-bold">1.5</td><td class="px-3 py-2 text-slate-400">2026-08-24</td><td class="px-3 py-2">TH/EN language toggle + คำแปลไทยของเนื้อหาข้อกำหนดทั้ง 96 ข้อ</td></tr>
+            <tr><td class="px-3 py-2 font-mono font-bold">1.5b</td><td class="px-3 py-2 text-slate-400">2026-08-25</td><td class="px-3 py-2">คำแปลไทยของภาคผนวก 1–5</td></tr>
+            <tr><td class="px-3 py-2 font-mono font-bold">1.6</td><td class="px-3 py-2 text-slate-400">2026-08-27</td><td class="px-3 py-2">External Read API (<code class="bg-slate-100 px-1 rounded">/api/v1/*</code>) — bearer token, อ่านอย่างเดียว, scoped, rate-limited, มี audit log</td></tr>
+            <tr><td class="px-3 py-2 font-mono font-bold">1.7</td><td class="px-3 py-2 text-slate-400">2026-09-03</td><td class="px-3 py-2">FY2026 alignment — รีเฟรชข้อมูลจาก workbook ใหม่, คืนสถานะ "Not Applicable", เพิ่ม self-assessment + Marubeni Official Score</td></tr>
+            <tr><td class="px-3 py-2 font-mono font-bold">1.7b</td><td class="px-3 py-2 text-slate-400">2026-09-08</td><td class="px-3 py-2">self_assessment บน External Read API (ปิดช่องว่างที่ v1.7 ยังไม่ครอบคลุม API ภายนอก)</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===================== GOALS ===================== -->
+    <section id="goals" class="anchor-offset">
+      <h2 class="text-xl font-bold text-blue-800 mb-3">🎯 เป้าหมาย &amp; Non-Goals</h2>
+      <div class="grid md:grid-cols-2 gap-4">
+        <div class="bg-white rounded-xl border border-slate-200 p-5">
+          <h3 class="font-bold text-slate-700 text-sm mb-2">เป้าหมายหลัก</h3>
+          <ul class="text-xs text-slate-600 space-y-1.5 list-disc pl-4">
+            <li>ข้อมูลทุกอย่างอยู่ใน Supabase เป็น single source of truth — ไม่มีอะไรอยู่แค่ใน localStorage หรือ client bundle</li>
+            <li>Frontend ไม่คุยกับ Supabase ตรง — ผ่าน BFF เท่านั้น service key ไม่หลุดถึงเบราว์เซอร์</li>
+            <li>สิทธิ์ควบคุมด้วย PIN login + 3 ระดับ role ตรวจสอบฝั่งเซิร์ฟเวอร์เสมอ ไม่ใช่แค่ซ่อน UI</li>
+            <li>ทุกการแก้ไข status/owner/note ระบุตัวคนและเวลา (audit log)</li>
+            <li><b>(v1.3)</b> ไม่มีข้อไหนถูกตัดสิน Compliant/NC โดยไม่ผ่าน Reviewer และ Approver แยกจากคนเตรียมหลักฐาน</li>
+            <li><b>(v1.3)</b> งาน ClickUp เชื่อมกับข้อกำหนดโดยตรง ไม่ต้องทำ mapping สองที่</li>
+          </ul>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 p-5">
+          <h3 class="font-bold text-slate-700 text-sm mb-2">สิ่งที่ตั้งใจไม่ทำ (Non-Goals)</h3>
+          <ul class="text-xs text-slate-600 space-y-1.5 list-disc pl-4">
+            <li>Self-service signup / SSO / email login — เครื่องมือภายในทีมเล็ก ใช้ PIN พอ</li>
+            <li>Real-time collaboration (live cursor, conflict UI) — last-write-wins เพียงพอสำหรับ checklist ขนาดนี้</li>
+            <li>แก้เนื้อหา checklist master ผ่าน UI — แก้ตรงใน Supabase ได้ถ้าจำเป็น</li>
+            <li>แอปมือถือแยก — เป็น responsive web app</li>
+            <li><b>(v1.3)</b> ผูก ClickUp API ลึก (แค่ URL field ไม่ sync สถานะ)</li>
+            <li><b>(v1.3)</b> Multi-reviewer/approver พร้อมกันต่อข้อ — เป็นแบบคนเดียวต่อขั้น</li>
+            <li><b>(v1.6)</b> เขียน/แก้ข้อมูลผ่าน API ภายนอก, เดิน workflow ผ่าน API, ดึงไฟล์หลักฐานผ่าน API</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== ROLES ===================== -->
+    <section id="roles" class="anchor-offset">
+      <h2 class="text-xl font-bold text-blue-800 mb-3">👥 สิทธิ์และบทบาท</h2>
+      <div class="bg-white rounded-xl border border-slate-200 p-5 mb-4">
+        <h3 class="font-bold text-slate-700 text-sm mb-2">บทบาทดูข้อมูล (v1.0)</h3>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead><tr class="text-slate-500"><th class="py-1.5">สิทธิ์</th><th class="py-1.5 text-center">admin</th><th class="py-1.5 text-center">read_write</th><th class="py-1.5 text-center">read_only</th></tr></thead>
+            <tbody class="divide-y divide-slate-100">
+              <tr><td class="py-1.5">ดูทุกแท็บ</td><td class="text-center">✅</td><td class="text-center">✅</td><td class="text-center">✅</td></tr>
+              <tr><td class="py-1.5">แก้ status/owner/note</td><td class="text-center">✅</td><td class="text-center">✅</td><td class="text-center">❌</td></tr>
+              <tr><td class="py-1.5">แก้เนื้อหา checklist master</td><td class="text-center">✅</td><td class="text-center">❌</td><td class="text-center">❌</td></tr>
+              <tr><td class="py-1.5">จัดการ user / ดู audit log</td><td class="text-center">✅</td><td class="text-center">❌</td><td class="text-center">❌</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="bg-white rounded-xl border border-slate-200 p-5">
+        <h3 class="font-bold text-slate-700 text-sm mb-1">บทบาท Workflow (v1.3) — แทนที่ read_write เดิม</h3>
+        <p class="text-xs text-slate-400 mb-2"><code class="bg-slate-100 px-1 rounded">read_write</code> เดิมถูกแยกเป็น 3 บทบาทเฉพาะขั้นตอน — คนเตรียมหลักฐานไม่ใช่คนอนุมัติเอง</p>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead><tr class="text-slate-500"><th class="py-1.5">สิทธิ์</th><th class="py-1.5 text-center">admin</th><th class="py-1.5 text-center">user</th><th class="py-1.5 text-center">reviewer</th><th class="py-1.5 text-center">approver</th><th class="py-1.5 text-center">read_only</th></tr></thead>
+            <tbody class="divide-y divide-slate-100">
+              <tr><td class="py-1.5">แก้ Owner/Evidence/ClickUp</td><td class="text-center">✅</td><td class="text-center">✅</td><td class="text-center">❌</td><td class="text-center">❌</td><td class="text-center">❌</td></tr>
+              <tr><td class="py-1.5">Submit for Approval</td><td class="text-center">✅</td><td class="text-center">✅</td><td class="text-center">❌</td><td class="text-center">❌</td><td class="text-center">❌</td></tr>
+              <tr><td class="py-1.5">Review: OK/Reject + comment</td><td class="text-center">✅</td><td class="text-center">❌</td><td class="text-center">✅</td><td class="text-center">❌</td><td class="text-center">❌</td></tr>
+              <tr><td class="py-1.5">ตัดสินสุดท้าย (Compliant/CwC/NC)</td><td class="text-center">✅</td><td class="text-center">❌</td><td class="text-center">❌</td><td class="text-center">✅</td><td class="text-center">❌</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="text-[11px] text-slate-400 mt-2">💡 <code class="bg-slate-100 px-1 rounded">admin</code> ทำได้ทุกขั้น (break-glass สำรองกรณีคนไม่พร้อม) — บทบาทอื่นทำได้เฉพาะขั้นตอนของตัวเองเท่านั้น</p>
+      </div>
+    </section>
+
+    <!-- ===================== FEATURE 1: AUTH ===================== -->
+    <section id="f-auth" class="anchor-offset">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="text-2xl">🔑</span>
+        <h2 class="text-xl font-bold text-blue-800">1. การยืนยันตัวตน</h2>
+        <span class="text-[10px] px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-bold">v1.0 · shipped</span>
+      </div>
+      <div class="bg-white rounded-xl border border-slate-200 p-5 text-sm text-slate-600 leading-relaxed space-y-2">
+        <ul class="list-disc pl-5 space-y-1.5">
+          <li>เข้าสู่ระบบด้วย <b>PIN</b> เท่านั้น (ไม่มี username/email) — เหมาะกับทีมเล็กที่รู้จักกันชัดเจน</li>
+          <li>PIN ถูก hash ด้วย HMAC-SHA256 + pepper ก่อนเก็บ — ไม่เก็บ/log เป็น plaintext เด็ดขาด</li>
+          <li>ล็อกอินสำเร็จได้ session cookie แบบ httpOnly + secure + <code class="bg-slate-100 px-1 rounded text-xs">sameSite: strict</code> (JWT อายุ 8–12 ชม.)</li>
+          <li>ทุก endpoint (ยกเว้น login) ต้องมี session ที่ถูกต้อง endpoint ที่แก้ไขข้อมูลต้องมี role ที่เหมาะสมด้วย — ตรวจฝั่งเซิร์ฟเวอร์เสมอ</li>
+          <li>ข้อความ error ทั่วไปเดียวกันหมด ไม่บอกว่า "PIN ไม่มีอยู่" หรือ "PIN ผิด" เพื่อไม่ให้เดา PIN ที่มีอยู่จริงได้</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ===================== FEATURE 2: TRACKER ===================== -->
+    <section id="f-tracker" class="anchor-offset">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="text-2xl">✅</span>
+        <h2 class="text-xl font-bold text-blue-800">2. Checklist Tracker</h2>
+        <span class="text-[10px] px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-bold">v1.0 · shipped</span>
+      </div>
+      <div class="bg-white rounded-xl border border-slate-200 p-5 text-sm text-slate-600 leading-relaxed space-y-2">
+        <p>ติดตาม 96 ข้อกำหนดใน 8 หมวด — แต่ละข้อมี <b>status</b> (Not Started / In Progress / Compliant / Partial / Not Compliant / Not Applicable), <b>owner</b> (ผู้รับผิดชอบ), <b>note</b> (หลักฐาน/หมายเหตุ), และ <b>ClickUp task link</b></p>
+        <ul class="list-disc pl-5 space-y-1.5">
+          <li>แท็บ Overview / Tracker / By Category / Reference / Appendix — ครบเหมือนระบบเดิม ดึงข้อมูลจาก BFF แทนค่าคงที่ในโค้ด</li>
+          <li>ผู้ใช้ read_only เห็น input เป็น plain text ไม่มีช่องแก้ไข</li>
+          <li>ทุกการแก้ status/owner/note เขียนลง <code class="bg-slate-100 px-1 rounded text-xs">audit_log</code> — ใคร แก้ฟิลด์ไหน จากอะไรเป็นอะไร เมื่อไหร่</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ===================== FEATURE 3: RADAR/GRADE ===================== -->
+    <section id="f-radar" class="anchor-offset">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="text-2xl">📊</span>
+        <h2 class="text-xl font-bold text-blue-800">3. Radar Chart &amp; เกรดรวม</h2>
+        <span class="text-[10px] px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-bold">v1.1–v1.2 · shipped</span>
+      </div>
+      <div class="bg-white rounded-xl border border-slate-200 p-5 text-sm text-slate-600 leading-relaxed space-y-2">
+        <ul class="list-disc pl-5 space-y-1.5">
+          <li><b>Compliance Radar Chart</b> — กราฟเรดาร์ 8 แกน (1 แกน/หมวด) แสดง % ความคืบหน้าพร้อมเกรด A–E ต่อหมวด บนแท็บ Overview เพิ่มเติมจากแถบ progress เดิม</li>
+          <li>เกณฑ์เกรด: <b>A</b> ≥80% · <b>B</b> ≥60% · <b>C</b> ≥40% · <b>D</b> ≥20% · <b>E</b> &lt;20% (รวมขอบล่างเข้าเกรดบน ไม่มีช่องว่างหรือทับซ้อน)</li>
+          <li><b>Overall Grade</b> — เกรดเดียวรวมทั้ง 96 ข้อ 8 หมวด คำนวณจากเกณฑ์เดียวกัน</li>
+          <li><b>Priority Status Panels</b> — สรุปแยกเฉพาะข้อ Top Priority (◎) และ Priority (〇) ไม่รวมข้อที่ไม่มีลำดับความสำคัญ</li>
+          <li>คำนวณฝั่ง client ทั้งหมดจากข้อมูลที่ <code class="bg-slate-100 px-1 rounded text-xs">GET /api/items</code> คืนมาอยู่แล้ว — ไม่ต้องแก้ schema หรือ BFF</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ===================== FEATURE 4: WORKFLOW ===================== -->
+    <section id="f-workflow" class="anchor-offset">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="text-2xl">🔄</span>
+        <h2 class="text-xl font-bold text-blue-800">4. Approval Workflow</h2>
+        <span class="text-[10px] px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-bold">v1.3 · shipped</span>
+      </div>
+      <div class="bg-white rounded-xl border border-slate-200 p-5 text-sm text-slate-600 leading-relaxed space-y-3">
+        <p>แต่ละข้อมี <code class="bg-slate-100 px-1 rounded text-xs">workflow_state</code> แยกจาก <code class="bg-slate-100 px-1 rounded text-xs">status</code> ที่แสดงผล — เดินตามลำดับที่บังคับแบ่งแยกหน้าที่:</p>
+        <div class="flex flex-wrap items-center gap-1.5 text-[11px] font-medium">
+          <span class="px-2 py-1 rounded-full bg-slate-100 text-slate-600">Not Started</span>→
+          <span class="px-2 py-1 rounded-full bg-blue-100 text-blue-700">In Progress</span>→
+          <span class="px-2 py-1 rounded-full bg-violet-100 text-violet-700">Pending Review</span>→
+          <span class="px-2 py-1 rounded-full bg-indigo-100 text-indigo-700">Pending Approval</span>→
+          <span class="px-2 py-1 rounded-full bg-green-100 text-green-700">Compliant / Complied w/ Condition / Not Compliant</span>
+        </div>
+        <ul class="list-disc pl-5 space-y-1.5">
+          <li><b>Submit for Approval</b> (User) — ต้องกรอก Owner + Evidence ก่อนส่งได้ (ClickUp ไม่บังคับ)</li>
+          <li><b>Reviewer</b> — OK (ไปต่อ Approver, comment ไม่บังคับ) หรือ Reject (กลับ User, <b>comment บังคับ</b>)</li>
+          <li><b>Approver</b> — Compliant / Complied with Condition (ต้องมีไฟล์แนบหรือ comment อย่างน้อย 1 อย่าง) / Not Compliant / หรือ Reject กลับ User</li>
+          <li>ทุก transition เขียนลง <code class="bg-slate-100 px-1 rounded text-xs">item_workflow_events</code> — actor, from-state, to-state, comment, ไฟล์แนบ, เวลา — เป็นทั้ง audit trail และประวัติ comment ที่ User เห็นตอนถูกตีกลับ</li>
+          <li>ไฟล์หลักฐานเก็บใน Supabase Storage (private bucket) แจกผ่าน signed URL อายุสั้นเท่านั้น ไม่มี public URL</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ===================== FEATURE 5: REOPEN ===================== -->
+    <section id="f-reopen" class="anchor-offset">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="text-2xl">🔓</span>
+        <h2 class="text-xl font-bold text-blue-800">5. Reopen for Edit</h2>
+        <span class="text-[10px] px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-bold">v1.4 · shipped</span>
+      </div>
+      <div class="bg-white rounded-xl border border-slate-200 p-5 text-sm text-slate-600 leading-relaxed space-y-2">
+        <ul class="list-disc pl-5 space-y-1.5">
+          <li>เมื่อข้อถึงสถานะจบ (Compliant / Complied with Condition / Not Compliant) — Owner และ Evidence จะ <b>ล็อกแก้ไขไม่ได้</b> สำหรับ User</li>
+          <li>ปุ่ม <b>"Request for Approval"</b> ปลดล็อก: ย้อน workflow_state และ status กลับเป็น In Progress พร้อมบันทึก event — ข้อนั้นหยุดนับเป็น Compliant/Partial ใน Overview/radar/grade ทันทีที่เปิดใหม่</li>
+          <li>หลังปลดล็อก ต้องเดิน Submit → Review → Approve ใหม่ทั้งหมด ไม่มีทางลัดกลับไปสถานะเดิม</li>
+          <li><b>ClickUp link แก้ไขได้เสมอ</b> ไม่ว่า workflow จะอยู่สถานะไหน — เป็นแค่ลิงก์อ้างอิงงานภายนอก ไม่ใช่หลักฐาน compliance</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ===================== FEATURE 6: LANGUAGE ===================== -->
+    <section id="f-lang" class="anchor-offset">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="text-2xl">🌐</span>
+        <h2 class="text-xl font-bold text-blue-800">6. TH/EN Language Toggle</h2>
+        <span class="text-[10px] px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-bold">v1.5–v1.5b · shipped</span>
+      </div>
+      <div class="bg-white rounded-xl border border-slate-200 p-5 text-sm text-slate-600 leading-relaxed space-y-2">
+        <ul class="list-disc pl-5 space-y-1.5">
+          <li>ปุ่มสลับ <b>ไทย | EN</b> มุมขวาบน — เปลี่ยนทั้งเมนู, เนื้อหาข้อกำหนดทั้ง 96 ข้อ, ภาคผนวก 1–5, และหน้า login</li>
+          <li>อังกฤษเป็นต้นฉบับที่ยึดถือเสมอ — ถ้าคำแปลไทยยังว่าง ระบบ fallback เป็นอังกฤษอัตโนมัติ ไม่มีทางเห็นช่องว่าง</li>
+          <li>โหมดไทยมีป้ายเตือนชัดเจนว่าเป็น <b>คำแปล AI ที่ยังไม่ผ่านการตรวจทาน</b> — สำคัญเพราะนี่คือเอกสาร compliance</li>
+          <li>ค้นหาข้ามภาษาเสมอ ไม่ว่าจะอยู่โหมดไหน</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ===================== FEATURE 7: FY2026 ===================== -->
+    <section id="f-fy2026" class="anchor-offset">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="text-2xl">📋</span>
+        <h2 class="text-xl font-bold text-blue-800">7. FY2026 Alignment</h2>
+        <span class="text-[10px] px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-bold">v1.7 · shipped</span>
+      </div>
+      <div class="bg-white rounded-xl border border-slate-200 p-5 text-sm text-slate-600 leading-relaxed space-y-3">
+        <p>อัปเดตข้อมูลจาก workbook FY2026 Ver.1 (อัปเดต 3 เม.ย. 2026) — เลขข้อ หมวด และระดับความเสี่ยงไม่เปลี่ยน (สถานะ workflow และ audit trail เดิมจึงไม่กระทบ) มี <b>10 ข้อ</b>ที่เนื้อหาแก้ไข (11, 26, 27, 48, 49, 50, 55, 66, 69, 81) และข้อ 66 เลื่อนเป็น Priority 〇</p>
+        <ul class="list-disc pl-5 space-y-1.5">
+          <li><b>"Not Applicable" กลับมาเป็นสถานะที่ 6</b> — แยกจาก "Not Compliant" อีกครั้ง เพราะ workbook FY2026 ใช้ N/A กับ 8 ข้อ และสูตรคะแนนของ Marubeni ตัด N/A ออกจากตัวหาร ไม่ได้นับเป็นข้อที่ล้มเหลว</li>
+          <li><b>Self-assessment แยกจาก status เด็ดขาด</b> — คำตอบจาก workbook (〇/×/-) เก็บใน <code class="bg-slate-100 px-1 rounded text-xs">self_assessment</code>/<code class="bg-slate-100 px-1 rounded text-xs">self_assessment_note</code> ไม่เขียนทับ <code class="bg-slate-100 px-1 rounded text-xs">status</code> เพราะ status ต้องผ่าน workflow อนุมัติจริงเท่านั้น — import ตรงจะเท่ากับปลอมการอนุมัติ 45 รายการที่ไม่มีใครอนุมัติจริง</li>
+          <li><b>Marubeni Official Assessment panel</b> — คะแนนถ่วงน้ำหนักความเสี่ยงตามที่ Marubeni คำนวณเป๊ะ (Very High=7, High=5, Middle=3, Low=0) verified แล้วว่าตรงกับตัวเลขในชีต Assessment Calculation ทั้ง 8 หมวด, ยอดรวม 45/88, และเกรดรวม C</li>
+          <li>Panel นี้ซ่อนอัตโนมัติถ้ายังไม่มีการ import self-assessment — dashboard ทำงานปกติเหมือน v1.4 เดิม</li>
+        </ul>
+        <div class="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 text-xs">
+          ✅ ตรวจสอบแล้ว 2026-09-08: source workbook (<code class="bg-white/60 px-1 rounded">source/Marubeni_Group_IT_Governance_Rules_Checklist_English.xlsx</code>) → รัน <code class="bg-white/60 px-1 rounded">scripts/extract-xlsx.py</code> ซ้ำ → ได้ <code class="bg-white/60 px-1 rounded">data/items.json</code>/<code class="bg-white/60 px-1 rounded">data/assessment.json</code> เหมือนเดิมทุกตัวอักษร (96/96 ข้อ, × 43 · 〇 45 · - 8 ตรงกับที่ import ใน production)
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== FEATURE 8: EXTERNAL API ===================== -->
+    <section id="f-api" class="anchor-offset">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="text-2xl">🔌</span>
+        <h2 class="text-xl font-bold text-blue-800">8. External Read API</h2>
+        <span class="text-[10px] px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-bold">v1.6–v1.7b · shipped</span>
+      </div>
+      <div class="bg-white rounded-xl border border-slate-200 p-5 text-sm text-slate-600 leading-relaxed space-y-3">
+        <p>ให้ระบบภายนอก (n8n, LINE bot, Claude ฯลฯ) อ่านสถานะ ITGR ได้โดยตรงผ่าน <code class="bg-slate-100 px-1 rounded text-xs">/api/v1/*</code> — <b>อ่านอย่างเดียวเสมอ</b> ใช้ token แยกขาดจากระบบ PIN login โดยสิ้นเชิง</p>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs border border-slate-200 rounded-lg overflow-hidden">
+            <thead><tr class="bg-slate-50 text-slate-500"><th class="px-2 py-1.5">Endpoint</th><th class="px-2 py-1.5">Scope</th><th class="px-2 py-1.5">ใช้ทำอะไร</th></tr></thead>
+            <tbody class="divide-y divide-slate-100">
+              <tr><td class="px-2 py-1.5 font-mono">/meta</td><td class="px-2 py-1.5">token ใด ๆ</td><td class="px-2 py-1.5">คำอธิบายทุก enum/filter + ตัวอย่างคำถาม — หัวใจของการถามแบบ Vibe</td></tr>
+              <tr><td class="px-2 py-1.5 font-mono">/items</td><td class="px-2 py-1.5">items:read</td><td class="px-2 py-1.5">ค้น/กรอง 96 ข้อ (รวม self_assessment ตั้งแต่ v1.7b)</td></tr>
+              <tr><td class="px-2 py-1.5 font-mono">/items/{no}</td><td class="px-2 py-1.5">items:read</td><td class="px-2 py-1.5">รายละเอียดข้อเดียว</td></tr>
+              <tr><td class="px-2 py-1.5 font-mono">/items/{no}/history</td><td class="px-2 py-1.5">items:read + history:read</td><td class="px-2 py-1.5">ไทม์ไลน์ workflow (scope แยก — มีชื่อคนและปัญหาที่ยังไม่เสร็จ)</td></tr>
+              <tr><td class="px-2 py-1.5 font-mono">/summary</td><td class="px-2 py-1.5">summary:read</td><td class="px-2 py-1.5">ตัวเลขสรุป — คำนวณด้วยตรรกะเดียวกับ Overview เป๊ะ</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <ul class="list-disc pl-5 space-y-1.5">
+          <li>Token ไม่หมดอายุเองโดยดีฟอลต์ (ตัดสินใจแล้ว) — ใช้การเพิกถอนเป็นกลไกควบคุมแทน หน้า Admin จึงต้องโชว์ "ใช้ล่าสุด" ให้เห็นชัด</li>
+          <li>Rate limit 60 request/นาที/token, ทุก request บันทึกลง <code class="bg-slate-100 px-1 rounded text-xs">api_request_log</code> — <b>เขียน log ก่อนส่ง response เสมอ</b> (ดูกล่องด้านล่าง — บทเรียนจริงจากการ deploy ครั้งแรก)</li>
+          <li>ไม่ส่ง CORS header ใด ๆ — token ใช้จาก JavaScript ในเบราว์เซอร์คนอื่นไม่ได้</li>
+        </ul>
+        <div class="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-800">
+          ⚠️ <b>บทเรียนจาก production จริง:</b> deploy รอบแรก (27 ส.ค.) เขียน log <i>หลัง</i> ส่ง response — Vercel serverless ไม่การันตีว่างานที่ทำหลังส่ง response แล้วจะรันจบ ผลคือบันทึกได้แค่ 1 ใน 9 request จริง แก้โดยสลับเป็น <b>เขียน log ก่อน แล้วค่อยส่ง response เสมอ</b> ยืนยันแล้วว่าบันทึกครบ 100% หลังแก้
+        </div>
+        <p class="text-xs text-slate-400 pt-1">รายละเอียด endpoint ครบทุกพารามิเตอร์ + ตัวอย่างจริง + วิธีต่อกับ n8n/Claude/LINE ดูที่ <a href="api-docs.html" class="text-blue-600 hover:underline font-medium">api-docs.html →</a></p>
+      </div>
+    </section>
+
+    <!-- ===================== DATA MODEL ===================== -->
+    <section id="data-model" class="anchor-offset">
+      <h2 class="text-xl font-bold text-blue-800 mb-3">🗄️ Data Model</h2>
+      <div class="bg-white rounded-xl border border-slate-200 p-5">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead><tr class="text-slate-500"><th class="py-1.5">ตาราง</th><th class="py-1.5">คอลัมน์สำคัญ</th></tr></thead>
+            <tbody class="divide-y divide-slate-100">
+              <tr><td class="py-1.5 font-mono align-top">users</td><td class="py-1.5">id, display_name, role (admin/user/reviewer/approver/read_only), pin_hash, active</td></tr>
+              <tr><td class="py-1.5 font-mono align-top">checklist_items</td><td class="py-1.5">no (PK), cat_no, category(_th), name(_th), content(_th), standard(_th), evidence(_th), article, risk, priority, qtype(_th)</td></tr>
+              <tr><td class="py-1.5 font-mono align-top">item_status</td><td class="py-1.5">item_no (FK), status (6 ค่า), owner, note, clickup_url, workflow_state, self_assessment, self_assessment_note, updated_by, updated_at</td></tr>
+              <tr><td class="py-1.5 font-mono align-top">item_workflow_events</td><td class="py-1.5">item_no, actor_id, from_state, to_state, comment, evidence_file_id, created_at — append-only</td></tr>
+              <tr><td class="py-1.5 font-mono align-top">item_evidence_files</td><td class="py-1.5">item_no, uploaded_by, storage_path (private bucket), file_name, content_type</td></tr>
+              <tr><td class="py-1.5 font-mono align-top">drive_folders / drive_files</td><td class="py-1.5">ดัชนีเอกสารอ้างอิงจาก Google Drive</td></tr>
+              <tr><td class="py-1.5 font-mono align-top">appendices</td><td class="py-1.5">id, title(_th), cat, related_q, kind, data (jsonb), data_th, note(_th)</td></tr>
+              <tr><td class="py-1.5 font-mono align-top">audit_log</td><td class="py-1.5">user_id, item_no, field, old_value, new_value, created_at</td></tr>
+              <tr><td class="py-1.5 font-mono align-top">api_tokens</td><td class="py-1.5">id, name, token_hash (unique), prefix, scopes (text[]), active, expires_at (nullable), last_used_at, created_by</td></tr>
+              <tr><td class="py-1.5 font-mono align-top">api_request_log</td><td class="py-1.5">token_id (FK, on delete set null), path, query (jsonb), status, duration_ms, created_at — append-only, ใช้คำนวณ rate limit ด้วย</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="text-[11px] text-slate-400 mt-3">DDL ฉบับเต็ม: <code class="bg-slate-100 px-1 rounded">supabase/schema.sql</code></p>
+      </div>
+    </section>
+
+    <!-- ===================== METRICS ===================== -->
+    <section id="metrics" class="anchor-offset">
+      <h2 class="text-xl font-bold text-blue-800 mb-3">📈 Success Metrics</h2>
+      <div class="grid md:grid-cols-2 gap-4">
+        <div class="bg-white rounded-xl border border-slate-200 p-5">
+          <h3 class="font-bold text-slate-700 text-sm mb-2">Leading (2–4 สัปดาห์แรก)</h3>
+          <ul class="text-xs text-slate-600 space-y-1.5 list-disc pl-4">
+            <li>ทีม COE&amp;S/ATC ทุกคนมี PIN login ใช้งานได้ 100%</li>
+            <li>ไม่มีรายงาน "ข้อมูลหาย" จาก localStorage อีก</li>
+            <li>ทุกการแก้ไข tracker มี <code class="bg-slate-100 px-1 rounded">updated_by</code> ถูกต้อง</li>
+            <li><b>(v1.3)</b> 100% ของข้อที่ submit ใหม่ผ่าน Reviewer + Approver ก่อนถึงสถานะจบ</li>
+            <li><b>(v1.6)</b> เวลาจากออก token ถึงยิงคำถามแรกสำเร็จ ≤ 10 นาที</li>
+          </ul>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 p-5">
+          <h3 class="font-bold text-slate-700 text-sm mb-2">Lagging (จบรอบตรวจ)</h3>
+          <ul class="text-xs text-slate-600 space-y-1.5 list-disc pl-4">
+            <li>Dashboard เป็น system of record ในการตรวจจริงของ Marubeni พร้อม audit trail ครบ</li>
+            <li>ไม่มี read-only stakeholder คนไหนต้องขอสิทธิ์แก้ไขเป็นทางลัด</li>
+            <li><b>(v1.3)</b> เวลาเฉลี่ยจาก Submit ถึงตัดสินสุดท้าย — ใช้ตั้ง baseline</li>
+            <li><b>(v1.6)</b> จำนวนครั้งที่ต้องเปิดเว็บแค่เพื่อเช็คสถานะ ลดลง ≥ 50% เมื่อมี automation ใช้ API จริง</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== OPEN QUESTIONS ===================== -->
+    <section id="open-questions" class="anchor-offset">
+      <h2 class="text-xl font-bold text-blue-800 mb-3">❓ คำถามที่ยังค้างอยู่</h2>
+      <div class="bg-white rounded-xl border border-slate-200 p-5">
+        <p class="text-xs text-slate-400 mb-3">คำถามที่ตอบแล้วถูกตัดออกจากรายการนี้ (ดูประวัติเต็มใน PRD.md) — เหลือเฉพาะที่ยังไม่ปิด:</p>
+        <ul class="text-xs text-slate-600 space-y-2 list-disc pl-4">
+          <li><b>Retention ของ audit log</b> — ยังไม่มีนโยบายลบ/เก็บ สันนิษฐานว่าเก็บไม่จำกัดช่วงรอบ FY2025</li>
+          <li><b>Rate limiting การล็อกอิน PIN</b> — ยังไม่บังคับ lockout หลังพยายามผิดหลายครั้ง (P1)</li>
+          <li><b>Reviewer/Approver ควรแบ่งตามหมวดไหม</b> — ตอนนี้เป็น global ทุกคน 96 ข้อ อาจเป็นคอขวดถ้าทีมเล็ก</li>
+          <li><b>(v1.6)</b> 60 request/นาทีพอไหมสำหรับ automation แบบ batch — รอดูการใช้จริงเดือนแรก</li>
+          <li><b>(v1.6)</b> เก็บ <code class="bg-slate-100 px-1 rounded">api_request_log</code> นานแค่ไหน — เสนอ 90 วัน ยังไม่ยืนยัน</li>
+          <li><b>(v1.6)</b> ควรทำ <code class="bg-slate-100 px-1 rounded">openapi.json</code> + IP allowlist ต่อ token ไหม — ยังไม่ได้ตัดสินใจ (ดู § 8 P1 roadmap)</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ===================== TIMELINE ===================== -->
+    <section id="timeline" class="anchor-offset">
+      <h2 class="text-xl font-bold text-blue-800 mb-3">🗓️ Timeline &amp; Phasing</h2>
+      <div class="bg-white rounded-xl border border-slate-200 p-5 text-sm text-slate-600 leading-relaxed">
+        <p class="mb-2">ไม่มีกำหนดส่งตายตัวจากภายนอก — ผูกกับรอบตรวจ ITGR ของ Marubeni โดยนัย (ควรพร้อมก่อนเริ่มรอบตรวจ ไม่ใช่กลางรอบ)</p>
+        <p class="text-xs text-slate-400">ทุกเวอร์ชัน v1.0–v1.7b ได้ deploy และ verify บน production แล้ว — ไม่มี phase ค้างในส่วน dashboard หลัก External Read API เหลือเฉพาะ P1 (OpenAPI spec, IP allowlist) ที่ยังไม่เริ่ม ดูรายละเอียดที่ § 8</p>
+      </div>
+    </section>
+
+    <!-- ===================== RECOMMENDATIONS ===================== -->
+    <section id="recommendations" class="anchor-offset">
+      <h2 class="text-xl font-bold text-blue-800 mb-3">💡 ข้อเสนอแนะ</h2>
+      <div class="bg-white rounded-xl border border-slate-200 p-5">
+        <p class="text-xs text-slate-400 mb-3">เรียงตามผลกระทบ/ความพยายามที่คาดว่าจะได้ — รายละเอียดเต็มใน PRD.md § 11</p>
+        <ol class="text-xs text-slate-600 space-y-2 list-decimal pl-4">
+          <li><b>ตัวนับ "รอคุณอยู่"</b> ในแอปสำหรับ Reviewer/Approver — ไม่มีสิ่งนี้ workflow จะรอคนจำได้เองว่าต้องเข้ามาเช็ค เป็นความเสี่ยงอันดับ 1 ที่ทำให้ workflow ค้าง</li>
+          <li><b>Reviewer/Approver แยกตามหมวด</b> — คุ้มค่าพิจารณาเมื่อรู้จำนวนคนจริงที่จะทำสองบทบาทนี้</li>
+          <li><b>SLA/อายุของ Pending Review/Approval</b> — แค่คอลัมน์ "ค้างกี่วัน" ก็ทำให้เห็นข้อที่ค้างได้โดยไม่ต้องสร้างระบบแจ้งเตือน</li>
+          <li><b>Comment thread เต็ม</b> ไม่ใช่แค่เหตุผลตีกลับล่าสุด — สำคัญเมื่อข้อหนึ่งถูกตีกลับมากกว่า 1 รอบ</li>
+          <li><b>เก็บไฟล์หลักฐานแบบ versioning</b> ไม่ทับของเดิม — สำคัญต่อการยืนยันย้อนหลังว่า ณ เวลาตัดสิน มีหลักฐานอะไรอยู่จริง</li>
+          <li><b>Export ชุดการตัดสินใจ</b> (PDF) ต่อข้อ/หมวด — การส่ง Marubeni จริงน่าจะต้องการสรุปสะอาด ไม่ใช่ลิงก์ dashboard สด</li>
+        </ol>
+      </div>
+    </section>
+
+    <div class="text-center text-xs text-slate-400 pt-6 border-t border-slate-200">
+      PRD ฉบับเต็มพร้อม acceptance criteria ละเอียดทุกข้อ: <code class="bg-slate-100 px-1 rounded">PRD.md</code> · API reference แบบเต็ม: <a href="api-docs.html" class="text-blue-600 hover:underline">api-docs.html</a> · จัดทำโดย COE&amp;S — AutoCorp (ATC)
+    </div>
+
+  </main>
+</div>
+
+</body>
+</html>
