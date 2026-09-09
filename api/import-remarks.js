@@ -16,7 +16,7 @@
 // (PRD.md § Goal 6, § 13.2 D2).
 import { getSupabase } from "../lib/supabase.js";
 import { requireAnyRole } from "../lib/auth.js";
-import { parseChecklistRemarks, boxDirectDownloadUrl } from "../lib/checklistRemarks.js";
+import { parseChecklistRemarks, fetchSharedWorkbook } from "../lib/checklistRemarks.js";
 
 const UNDEFINED_COLUMN = "42703";
 const UNDEFINED_TABLE = ["42P01", "PGRST205"];
@@ -63,28 +63,13 @@ export default async function handler(req, res) {
       res.status(400).json({ error: "No Box link is configured yet — an admin can set it in the Admin tab, or upload the file instead" });
       return;
     }
-    let downloadUrl;
     try {
-      downloadUrl = boxDirectDownloadUrl(config.box_url);
+      buffer = await fetchSharedWorkbook(config.box_url);
     } catch (e) {
-      res.status(400).json({ error: e.message });
+      await logImport(supabase, { file_name: sourceName, items_updated: 0, success: false, error: e.message, imported_by: session.sub });
+      res.status(502).json({ error: `${e.message}. You can upload the file instead.` });
       return;
     }
-    let resp;
-    try {
-      resp = await fetch(downloadUrl, { redirect: "follow", signal: AbortSignal.timeout(20000) });
-    } catch (e) {
-      await logImport(supabase, { file_name: sourceName, items_updated: 0, success: false, error: `fetch failed: ${e.message}`, imported_by: session.sub });
-      res.status(502).json({ error: `Could not reach Box: ${e.message}` });
-      return;
-    }
-    if (!resp.ok) {
-      const msg = `Box refused the download (HTTP ${resp.status}) — the link may require a login or not allow downloads. Upload the file instead.`;
-      await logImport(supabase, { file_name: sourceName, items_updated: 0, success: false, error: msg, imported_by: session.sub });
-      res.status(502).json({ error: msg });
-      return;
-    }
-    buffer = Buffer.from(await resp.arrayBuffer());
     sourceName = sourceName || "(fetched from Box)";
   }
 
