@@ -408,6 +408,7 @@ function officialSection(){
         </table>
       </div>
     </div>
+    ${remarkImportCard()}
   </div>`;
 }
 function priorityGradeSection(overallPct){
@@ -526,7 +527,7 @@ function tracker(){
         <td class="px-2 py-2 text-center"><button onclick="toggleRow(${it.no})" class="text-blue-600 font-bold w-5">${open?'−':'+'}</button></td>
         <td class="px-2 py-2 text-center text-slate-400 text-xs">${it.no}</td>
         <td class="px-2 py-2 text-xs text-slate-500 min-w-[130px]">${it.catNo}. ${esc(itemCatLabel(it))}</td>
-        <td class="px-2 py-2 text-sm text-slate-700 font-medium min-w-[220px]">${esc(fieldOf(it,'name'))}${hasRemark(it.no)?` <span title="${t('มี Remark จากไฟล์ checklist ของ Marubeni — กด + เพื่อดู','Has a Remark from Marubeni\'s checklist workbook — expand to read it')}" class="text-sky-500 text-xs align-middle">\u{1F4AC}</span>`:''}</td>
+        <td class="px-2 py-2 text-sm text-slate-700 font-medium min-w-[220px]">${esc(fieldOf(it,'name'))}${hasRemark(it.no)?` <span title="${t('มี Remark จาก Marubeni — กด + เพื่อดู','Has a Marubeni Remark — expand to read it')}" class="text-sky-500 text-xs align-middle">\u{1F4AC}</span>`:''}</td>
         <td class="px-2 py-2 text-center"><span class="text-[11px] px-2 py-0.5 rounded-full ${RISK_BG[it.risk]} whitespace-nowrap inline-block leading-tight">${riskLabel(it.risk)}</span></td>
         <td class="px-2 py-2 text-center text-xs">${it.priority==='◎'?`<span title="${t('สูงสุด','Top Priority')}" class="text-orange-600 font-bold">◎</span>`:(it.priority==='〇'?`<span title="${t('สำคัญ','Priority')}" class="text-blue-600">〇</span>`:'<span class="text-slate-300">–</span>')}</td>
         <td class="px-2 py-2 text-center text-xs text-slate-400 whitespace-nowrap">§${esc(it.article)}</td>
@@ -554,7 +555,6 @@ function tracker(){
         </div>
         ${locked&&editable?`<div class="text-[11px] text-amber-600 mt-2">\u{1F512} ${t('รายการนี้อนุมัติแล้ว — แก้ไข Owner/Evidence ไม่ได้จนกว่าจะกด "ส่งขออนุมัติใหม่" ด้านล่าง','This item is decided — Owner/Evidence are locked until you click "Request for Approval" below.')}</div>`:''}
         ${selfAssessmentPanel(it.no)}
-        ${boxRemarkPanel(it.no)}
         ${workflowPanel(it,wf)}
         <div class="mt-3 pt-3 border-t border-slate-200">
           <button onclick="toggleHistory(${it.no})" class="text-xs text-blue-600 hover:underline">${EXPANDED_HISTORY[it.no]?t('ซ่อนประวัติ','Hide history'):'\u{1F553} '+t('ดูประวัติ','View history')}</button>
@@ -566,7 +566,6 @@ function tracker(){
   }).join('');
   return `<section class="mt-6">
     ${editable?'':trackerRoleBanner()}
-    ${remarkImportCard()}
     <div class="bg-white rounded-xl border border-slate-200 p-4 mb-4 noprint">
       <div class="flex flex-wrap gap-2 items-center">
         <input id="fq" value="${esc(FILTERS.q)}" placeholder="\u{1F50D} ${t('ค้นหา ชื่อข้อ / เนื้อหา / Article','Search name / content / article')}" class="text-xs border border-slate-300 rounded-lg px-3 py-1.5 flex-1 min-w-[220px]">
@@ -599,44 +598,35 @@ function tracker(){
   </section>`;
 }
 
-// ---------- SELF-ASSESSMENT (v1.7) ----------
-// Read-only record of what was answered in the ITGR workbook. Deliberately
-// separate from the workflow fields above: this is what AutoCorp reported to
-// Marubeni, not what our own Reviewer/Approver has verified.
+// ---------- FROM THE MARUBENI CHECKLIST WORKBOOK (v1.7 + v1.9) ----------
+// One panel for everything that comes out of Marubeni's workbook for this
+// item: the self-assessment mark (〇/×/−) and the Remarks-column text.
+//
+// These were two panels until 2026-09-09 and read as duplicates, because
+// both showed the same spreadsheet column — v1.7 imported it once at seed
+// time into `self_assessment_note`, and v1.9 refreshes it on every import
+// into `box_remark`. The live one wins; the seed value is the fallback for
+// anything imported before v1.9 existed, so nothing is lost.
+//
+// Never `status`/`workflow_state`: this is what AutoCorp reported to
+// Marubeni, not what our own Reviewer/Approver has verified. The mark still
+// drives the official Marubeni score on the Overview tab.
 function selfAssessmentPanel(no){
   const s=STATE[no]||{};
-  const a=s.selfAssessment||'';
-  const n=s.selfAssessmentNote||'';
-  if(!a && !n) return '';
-  return `<div class="mt-3 pt-3 border-t border-slate-200">
-    <div class="flex items-center gap-2 flex-wrap mb-1">
-      <span class="text-xs font-bold text-slate-500">${t('ผลประเมินตนเอง (ไฟล์ ITGR FY2026)','Self-assessment, FY2026 workbook')}</span>
-      ${a?`<span class="text-[11px] px-2 py-0.5 rounded-full font-medium ${SELF_BG[a]||'bg-slate-100 text-slate-600'}">${a} ${t(SELF_TH[a]||'',SELF_EN[a]||'')}</span>`:''}
-    </div>
-    ${n?`<div class="text-sm text-slate-600 whitespace-pre-line bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">${esc(n)}</div>`:''}
-  </div>`;
-}
-
-// ---------- REMARK FROM THE CHECKLIST WORKBOOK (v1.9) ----------
-// A read-only mirror of the workbook's "Remarks Column" cell for this item.
-// Nothing in the app edits it — it changes only when someone imports a newer
-// copy of the workbook — so what is shown here is always exactly what the
-// spreadsheet says, with no second version of the truth to reconcile.
-// It is never `status`/`workflow_state`: a Remark is context, not a verdict
-// (PRD.md § 13.2 D2), the same separation as selfAssessmentPanel above.
-function boxRemarkPanel(no){
-  const s=STATE[no]||{};
-  const remark=s.boxRemark||'';
-  if(!remark) return '';
+  const mark=s.selfAssessment||'';
+  const remark=(s.boxRemark||'').trim()||(s.selfAssessmentNote||'').trim();
+  if(!mark && !remark) return '';
   const at=s.boxRemarkAt||'';
   return `<div class="mt-3 pt-3 border-t border-slate-200">
     <div class="flex items-center gap-2 flex-wrap mb-1">
-      <span class="text-xs font-bold text-slate-500">${t('Remark จากไฟล์ checklist (Marubeni)','Remark from the checklist workbook (Marubeni)')}</span>
-      ${at?`<span class="text-[10px] text-slate-400">${t('อัปเดตล่าสุด','last changed')} ${new Date(at).toLocaleString()}</span>`:''}
+      <span class="text-xs font-bold text-slate-500">${t('จากไฟล์ checklist ของ Marubeni','From Marubeni\'s checklist workbook')}</span>
+      ${mark?`<span class="text-[11px] px-2 py-0.5 rounded-full font-medium ${SELF_BG[mark]||'bg-slate-100 text-slate-600'}">${mark} ${t(SELF_TH[mark]||'',SELF_EN[mark]||'')}</span>`:''}
+      ${at?`<span class="text-[10px] text-slate-400">${t('Remark อัปเดต','Remark updated')} ${new Date(at).toLocaleString()}</span>`:''}
     </div>
-    <div class="text-sm text-slate-600 whitespace-pre-line bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">${esc(remark)}</div>
+    ${remark?`<div class="text-sm text-slate-600 whitespace-pre-line bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">${esc(remark)}</div>`:''}
   </div>`;
 }
+
 
 // Footnote under an expanded item. In English mode the reader is looking at
 // the authoritative ITGR wording; in Thai mode they are looking at an
@@ -1138,42 +1128,53 @@ async function setField(n,k,v){
     alert(t('บันทึกไม่สำเร็จ: ','Failed to save: ')+err.message);
   }
 }
-// v1.9 — import the Remarks column from an uploaded copy of the checklist
-// workbook (marubeni/admin only). One-way: Marubeni owns the file, so
-// nothing is ever written back to it (PRD.md § 13).
-let IMPORT_BUSY=false, IMPORT_RESULT=null;
+// v1.9 — refresh the Remarks column from Marubeni's checklist workbook.
+// Two ways in: "Sync" fetches the admin-configured Box link directly (no
+// Box app, no credentials — it just needs the link to allow downloads),
+// and if Box refuses, the upload fallback below always works. One-way:
+// nothing is ever written back to Marubeni's file (PRD.md § 13).
+let IMPORT_BUSY=false, IMPORT_RESULT=null, SHOW_UPLOAD=false;
+async function runRemarkImport(body, name){
+  IMPORT_BUSY=true; IMPORT_RESULT=null; render();
+  try{
+    const res=await fetchJSON('/api/import-remarks', { method:'POST', body });
+    IMPORT_RESULT={ ok:true, via:name, ...res };
+    await refreshItems();
+  }catch(err){
+    IMPORT_RESULT={ ok:false, via:name, error:err.message };
+    // A Box refusal is the expected case when the link needs a login —
+    // surface the upload path rather than leaving the user stuck.
+    if(name==='sync') SHOW_UPLOAD=true;
+  }finally{
+    IMPORT_BUSY=false; render();
+  }
+}
+async function syncRemarks(){ await runRemarkImport({}, 'sync'); }
 async function importRemarks(ev){
   ev.preventDefault();
   const input=document.getElementById('remark-file');
   const file=input && input.files && input.files[0];
   if(!file){ alert(t('เลือกไฟล์ .xlsx ก่อน','Choose an .xlsx file first')); return; }
-  IMPORT_BUSY=true; IMPORT_RESULT=null; render();
-  try{
-    const data_base64=await fileToBase64(file);
-    const res=await fetchJSON('/api/import-remarks', { method:'POST', body:{ file_name:file.name, data_base64 } });
-    IMPORT_RESULT={ ok:true, ...res };
-    await refreshItems();
-  }catch(err){
-    IMPORT_RESULT={ ok:false, error:err.message };
-  }finally{
-    IMPORT_BUSY=false; render();
-  }
+  const data_base64=await fileToBase64(file);
+  await runRemarkImport({ file_name:file.name, data_base64 }, 'upload');
 }
-// The import card lives on the Tracker tab, not the Admin tab — `marubeni`
-// is the role that runs it and cannot see Admin.
+function toggleUpload(){ SHOW_UPLOAD=!SHOW_UPLOAD; render(); }
+// Sits with the Marubeni assessment panel on the Overview tab: that score
+// and these Remarks come out of the same workbook, so this is where
+// "refresh it" belongs. Visible to marubeni/admin only.
 function remarkImportCard(){
   if(!canImportRemarks()) return '';
   const r=IMPORT_RESULT;
-  return `<div class="bg-white rounded-xl border border-sky-200 p-4 mb-4 noprint">
-    <div class="flex items-center gap-2 flex-wrap mb-1">
-      <span class="text-sm font-bold text-blue-800">\u{1F4E5} ${t('นำเข้า Remark จากไฟล์ checklist','Import Remarks from the checklist workbook')}</span>
-      ${BOX_CHECKLIST_URL?`<a href="${esc(BOX_CHECKLIST_URL)}" target="_blank" rel="noopener" class="text-xs text-sky-600 hover:underline">\u{1F4E6} ${t('เปิดไฟล์ใน Box เพื่อดาวน์โหลดตัวล่าสุด','Open the file in Box to download the current copy')}</a>`:''}
+  return `<div class="mt-3 pt-3 border-t border-slate-100">
+    <div class="flex flex-wrap gap-2 items-center">
+      <button onclick="syncRemarks()" ${IMPORT_BUSY?'disabled':''} class="text-xs px-3 py-1.5 rounded-lg ${IMPORT_BUSY?'bg-slate-200 text-slate-400':'bg-blue-600 hover:bg-blue-700 text-white'}">${IMPORT_BUSY?t('กำลังดึง...','Working...'):'\u{1F504} '+t('Sync Remark จาก Box','Sync Remarks from Box')}</button>
+      ${BOX_CHECKLIST_URL?`<a href="${esc(BOX_CHECKLIST_URL)}" target="_blank" rel="noopener" class="text-xs text-sky-600 hover:underline">\u{1F4E6} ${t('เปิดไฟล์ใน Box','Open the file in Box')}</a>`:`<span class="text-xs text-amber-600">${t('ผู้ดูแลระบบยังไม่ได้ตั้งลิงก์ไฟล์ Box (แท็บผู้ดูแลระบบ)','An admin has not set the Box file link yet (Admin tab)')}</span>`}
+      <button onclick="toggleUpload()" class="text-xs text-slate-400 hover:text-slate-600 hover:underline">${SHOW_UPLOAD?t('ซ่อนการอัปโหลด','Hide upload'):t('หรืออัปโหลดไฟล์เอง','or upload the file')}</button>
     </div>
-    <p class="text-xs text-slate-400 mb-2">${t('โหลดไฟล์ .xlsx ตัวล่าสุดจาก Box แล้วอัปโหลดที่นี่ — ระบบจะอ่านคอลัมน์ Remarks แล้วอัปเดตทุกข้อที่เปลี่ยน (ไม่แตะสถานะ และไม่เขียนอะไรกลับไปที่ไฟล์ของ Marubeni)','Download the current .xlsx from Box and upload it here — the Remarks column is read and every changed item is updated. Status is untouched, and nothing is ever written back to Marubeni\'s file.')}</p>
-    <form onsubmit="importRemarks(event)" class="flex flex-wrap gap-2 items-center">
+    ${SHOW_UPLOAD?`<form onsubmit="importRemarks(event)" class="flex flex-wrap gap-2 items-center mt-2 pt-2 border-t border-slate-100">
       <input id="remark-file" type="file" accept=".xlsx" class="text-xs">
-      <button ${IMPORT_BUSY?'disabled':''} class="text-xs px-3 py-1.5 rounded-lg ${IMPORT_BUSY?'bg-slate-200 text-slate-400':'bg-blue-600 hover:bg-blue-700 text-white'}">${IMPORT_BUSY?t('กำลังนำเข้า...','Importing...'):t('นำเข้า','Import')}</button>
-    </form>
+      <button ${IMPORT_BUSY?'disabled':''} class="text-xs px-3 py-1.5 rounded-lg ${IMPORT_BUSY?'bg-slate-200 text-slate-400':'bg-slate-600 hover:bg-slate-700 text-white'}">${t('นำเข้าจากไฟล์','Import from file')}</button>
+    </form>`:''}
     ${r?(r.ok
       ?`<div class="text-xs text-green-700 bg-green-50 border border-green-100 rounded-lg px-3 py-2 mt-2">\u{2705} ${t('อัปเดตแล้ว','Updated')} <b>${r.updated}</b> ${t('ข้อ','items')} · ${t('เหมือนเดิม','unchanged')} ${r.unchanged} · ${t('อ่านจากไฟล์','read from file')} ${r.rows_in_file} ${t('แถว','rows')}${r.unknown_items&&r.unknown_items.length?` · ${t('ข้ามข้อที่ไม่รู้จัก','skipped unknown items')}: ${r.unknown_items.join(', ')}`:''}</div>`
       :`<div class="text-xs text-red-700 bg-red-50 border border-red-100 rounded-lg px-3 py-2 mt-2">\u{26A0}\u{FE0F} ${esc(r.error)}</div>`)
