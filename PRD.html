@@ -111,7 +111,7 @@
             <tr><td class="px-3 py-2 font-mono font-bold">1.6</td><td class="px-3 py-2 text-slate-400">2026-08-27</td><td class="px-3 py-2">External Read API (<code class="bg-slate-100 px-1 rounded">/api/v1/*</code>) — bearer token, อ่านอย่างเดียว, scoped, rate-limited, มี audit log</td></tr>
             <tr><td class="px-3 py-2 font-mono font-bold">1.7</td><td class="px-3 py-2 text-slate-400">2026-09-03</td><td class="px-3 py-2">FY2026 alignment — รีเฟรชข้อมูลจาก workbook ใหม่, คืนสถานะ "Not Applicable", เพิ่ม self-assessment + Marubeni Official Score</td></tr>
             <tr><td class="px-3 py-2 font-mono font-bold">1.7b</td><td class="px-3 py-2 text-slate-400">2026-09-08</td><td class="px-3 py-2">self_assessment บน External Read API (ปิดช่องว่างที่ v1.7 ยังไม่ครอบคลุม API ภายนอก)</td></tr>
-            <tr class="bg-amber-50/50"><td class="px-3 py-2 font-mono font-bold text-amber-700">1.9</td><td class="px-3 py-2 text-slate-400">2026-09-08 (ร่าง)<br>2026-09-09 (แก้แบบ + สร้างบางส่วน)</td><td class="px-3 py-2"><b class="text-amber-700">ยังไม่ต่อ Box จริง</b> · Box.com Remark Sync — ลิงก์ไฟล์ Excel checklist ไฟล์เดียวทั้งระบบ อ่าน/เขียนเซลล์คอลัมน์ "Remarks Column" ของแต่ละข้อเป็น Remark (ไม่แตะ status จริง) + เพิ่ม role <code class="bg-white px-1 rounded">marubeni</code> · <b>ผ่านการแก้แบบ 2 รอบก่อนได้ข้อสรุป — ดูกล่องแดงใน § 9</b></td></tr>
+            <tr class="bg-amber-50/50"><td class="px-3 py-2 font-mono font-bold text-amber-700">1.9</td><td class="px-3 py-2 text-slate-400">2026-09-08 (ร่าง)<br>2026-09-09 (แก้แบบ + สร้างบางส่วน)</td><td class="px-3 py-2"><b class="text-amber-700">ยังไม่ต่อ Box จริง</b> · Box.com Remark Sync — ลิงก์ไฟล์ Excel checklist ไฟล์เดียวทั้งระบบ อ่าน/เขียนเซลล์คอลัมน์ "Remarks Column" ของแต่ละข้อเป็น Remark (ไม่แตะ status จริง) + เพิ่ม role <code class="bg-white px-1 rounded">marubeni</code> · รีเฟรชด้วยปุ่ม <b>Sync ปุ่มเดียว</b> (ดึงจากลิงก์แชร์ตรง ๆ แบบเดียวกับที่เบราว์เซอร์โหลด) มีอัปโหลดไฟล์เป็นทางสำรอง · <b>ผ่านการแก้แบบ 2 รอบ + แก้บั๊กอีก 1 — ดูกล่องแดงใน § 9</b></td></tr>
           </tbody>
         </table>
       </div>
@@ -359,10 +359,11 @@
         <span class="text-[10px] px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-bold">v1.9 · shipped</span>
       </div>
       <div class="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs text-red-800 mb-3">
-        🔄 <b>แก้แบบ 2 รอบกว่าจะได้ข้อสรุป — และทั้ง 2 รอบคือการ "ตัดออก" ไม่ใช่ "เพิ่ม":</b>
+        🔄 <b>แก้แบบ 2 รอบกว่าจะได้ข้อสรุป (ทั้ง 2 รอบคือการ "ตัดออก" ไม่ใช่ "เพิ่ม") แล้วเจอบั๊กของผู้พัฒนาเองอีก 1 รอบ:</b>
         <br>① ฉบับ 8 ก.ย. เข้าใจผิดว่าเป็น <b>comment ของ Box</b> บนโฟลเดอร์ต่อข้อ — จริง ๆ คือ <b>เนื้อหาในเซลล์</b> คอลัมน์ "Remarks Column" ของไฟล์เดียว
         <br>② ฉบับ 9 ก.ย. เช้า แก้ถูกแล้วแต่ยังออกแบบให้เขียนกลับได้ (ฉบับนี้รัน migration ขึ้น production ไปแล้ว — คอลัมน์ที่ไม่ใช้แล้วมีสคริปต์ลบให้เลือกรันท้าย <code class="bg-white/60 px-1 rounded">schema.sql</code>)
-        <br>③ ฉบับสุดท้าย: <b>ทางเดียว อ่านอย่างเดียว</b> เพราะไฟล์เป็นของ Marubeni เราได้แค่ลิงก์อ่าน
+        <br>③ <b>ทางเดียว อ่านอย่างเดียว</b> เพราะไฟล์เป็นของ Marubeni เราได้แค่ลิงก์อ่าน
+        <br>④ รอบสุดท้ายเป็นความผิดพลาดของผู้พัฒนาเอง ไม่ใช่การเปลี่ยนความต้องการ: ปุ่ม Sync ขึ้น <code class="bg-white/60 px-1 rounded">403</code> ทั้งที่ Box บอกว่าลิงก์นั้น <code class="bg-white/60 px-1 rounded">can_download: true</code> — เข้าใจรูปแบบ URL ของ Box ผิด 2 จุด (ดูกล่องฟ้าด้านล่าง)
       </div>
       <div class="bg-white rounded-xl border border-slate-200 p-5 text-sm text-slate-600 leading-relaxed space-y-3">
         <p>ไฟล์ checklist ของ Marubeni มีคอลัมน์ <b>"Remarks Column"</b> (คอลัมน์ T) ที่เขียนเหตุผลของผลตรวจไว้รายข้อ — เดิมอ่านเข้าระบบครั้งเดียวตอน seed แล้วก็นิ่ง ทั้งที่ Marubeni ยังแก้ไฟล์ตัวจริงของเขาเรื่อย ๆ · v1.9 ทำให้ <b>อัปโหลดไฟล์ล่าสุดเข้ามา แล้ว Remark ทุกข้ออัปเดตตาม</b> โดยไม่ต้องพิมพ์ซ้ำ</p>
@@ -374,8 +375,14 @@
             <li><b>D3 · Remark ไม่แตะ status จริง</b> — เหมือนหลักการ self-assessment (v1.7): มีแค่ User → Reviewer → Approver ที่ตั้งผลตัดสินได้ ไฟล์ที่ใครก็แก้ได้ต้องไม่กลายเป็นทางลัดข้าม workflow</li>
             <li><b>D4 · เพิ่ม role <code class="bg-white/60 px-1 rounded">marubeni</code></b> — คนฝั่ง Marubeni: ดูได้ + กดนำเข้า Remark ได้ แค่นั้น</li>
             <li><b>D5 · ทางเดียว ไม่เขียนกลับ</b> — ไฟล์เป็นของ Marubeni เราได้ลิงก์อ่านอย่างเดียว ถ้าจะเขียนต้องให้เขาเชิญเป็น Editor และยังมีคำถามว่า <i>ผู้ถูกตรวจควรไปเขียนไฟล์ควบคุมของผู้ตรวจไหม</i></li>
-            <li><b>D6 · อัปโหลดเอง ไม่ต่อ API</b> — พอไม่เขียนกลับ การดึงอัตโนมัติเหลือประโยชน์แค่ "ไม่ต้องมีคนกด" แต่ต้องแลกกับ OAuth + เก็บ token + ต่ออายุ ไม่คุ้มกับไฟล์ที่นาน ๆ เปลี่ยนที</li>
+            <li><b>D6 · กด Sync ปุ่มเดียว มีอัปโหลดเป็นทางสำรอง</b> (แก้จากเดิมที่ตัดสินว่า "อัปโหลดอย่างเดียว") — เดิมคิดว่าการดึงไฟล์ = ต้องใช้ Box API = ต้องมี OAuth + เก็บ token · จริง ๆ ลิงก์แชร์ที่เปิดให้โหลดได้ ดึงได้เลยแบบไม่ต้อง login เหมือนที่เบราว์เซอร์ทำ · Sync จึงไม่ต้องแลกกับอะไรเลย และเก็บช่องอัปโหลดไว้เผื่อวันที่ Marubeni ปิดสิทธิ์โหลด</li>
+            <li><b>D7 · ปุ่ม Sync อยู่ใต้ตารางคะแนน Marubeni ในหน้าภาพรวม</b> ไม่ใช่หน้า Tracker — คะแนนกับ Remark มาจากไฟล์เดียวกัน ปุ่มรีเฟรชควรอยู่ข้างตัวเลขที่มันรีเฟรช · ส่วนช่องตั้งลิงก์ยังอยู่แท็บ Admin (admin เท่านั้น)</li>
+            <li><b>D8 · รวม 2 panel เหลืออันเดียว</b> — panel self-assessment (v1.7) กับ panel Remark (v1.9) ดูซ้ำกัน<b>เพราะมันซ้ำจริง</b> ทั้งคู่คือคอลัมน์เดียวกันในไฟล์ · ตอนนี้เหลือ panel เดียว: mark 〇/×/− + ข้อความ Remark · เช็คก่อนรวมแล้วว่ามี note เดิม 58 ข้อ, Remark ใหม่ 58 ข้อ, และ <b>0 ข้อ</b>ที่มี note แต่ไม่มี Remark → ไม่มีอะไรหาย</li>
           </ul>
+        </div>
+
+        <div class="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 text-xs">
+          ⚠️ <b>2 เรื่องของ Box ที่หน้าตาเหมือนโค้ดเราพัง</b> (เสียเวลาไปจริง จึง comment กำกับไว้ในโค้ด): ① <code class="bg-white/60 px-1 rounded">/shared/static/&lt;hash&gt;.xlsx</code> ซึ่งเป็นรูปแบบที่เดาได้ง่ายที่สุด <b>ขึ้น 403 กับลิงก์แชร์ธรรมดา</b> ถึงแม้จะเปิดให้โหลด — เส้นทางที่ใช้ได้ต้องรู้เลข file id ที่ซ่อนอยู่ใน HTML ของหน้าลิงก์ จึงต้องอ่านหน้าเว็บก่อนแล้วค่อยโหลด · ② <b>Box ตอบ 404 ให้ request ที่ไม่มี User-Agent ของเบราว์เซอร์</b> ซึ่งหน้าตาเหมือนลิงก์ตาย — เป็นเหตุให้เคยสรุปผิดว่าลิงก์จริงของต้นเป็นลิงก์ตัวอย่าง
         </div>
 
         <div class="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 text-xs">
@@ -383,14 +390,17 @@
         </div>
 
         <ul class="list-disc pl-5 space-y-1.5">
-          <li>การ์ด <b>นำเข้า Remark</b> อยู่บนแท็บ Tracker (ไม่ใช่ Admin เพราะ <code class="bg-slate-100 px-1 rounded text-xs">marubeni</code> เข้า Admin ไม่ได้) — เห็นเฉพาะ marubeni/admin · มีลิงก์ไปเปิดไฟล์ใน Box เพื่อโหลดตัวล่าสุด</li>
-          <li>Panel <b>"Remark จากไฟล์ checklist"</b> ในแต่ละข้อ — <b>อ่านอย่างเดียวสำหรับทุกคน</b> ไม่มีใครแก้ในแอปได้ จึงไม่มีข้อมูล 2 เวอร์ชันให้ขัดกัน</li>
+          <li><b>ปุ่ม Sync</b> อยู่ใต้ตารางคะแนน Marubeni ในหน้าภาพรวม (เห็นเฉพาะ marubeni/admin) — กดปุ่มเดียวดึงไฟล์ล่าสุดมาอัปเดตครบทุกข้อ · ช่องอัปโหลดไฟล์<b>ซ่อนไว้</b>ใต้ลิงก์ "หรืออัปโหลดไฟล์เอง" และ<b>เด้งขึ้นมาเองเมื่อ Sync ล้มเหลว</b> จะได้ไม่มีใครติดค้าง</li>
+          <li>ช่องตั้ง<b>ลิงก์ไฟล์ Box</b> อยู่แท็บ Admin — admin เท่านั้นที่แก้ได้ marubeni อ่านได้</li>
+          <li>Panel <b>"จากไฟล์ checklist ของ Marubeni"</b> ในแต่ละข้อ (รวมจาก 2 panel เดิม) — mark 〇/×/− + ข้อความ Remark · <b>อ่านอย่างเดียวทุก role</b> ไม่มีข้อมูล 2 เวอร์ชันให้ขัดกัน</li>
+          <li>ในหน้า Tracker มี <b>ไอคอน 💬</b> บนแถวที่มี Remark และ<b>ตัวกรอง Remark</b> (มี / ยังไม่มี) — เห็นภาพรวมทันทีว่า 58 จาก 96 ข้ออยู่ตรงไหน ไม่ต้องกางทีละข้อ · ทั้งคู่ซ่อนตัวเองถ้ายังไม่เคยนำเข้า</li>
           <li>ทุกครั้งที่นำเข้าบันทึกลง <code class="bg-slate-100 px-1 rounded text-xs">remark_import_log</code> (1 แถวต่อ 1 ครั้ง) ทั้งสำเร็จและล้มเหลว</li>
           <li>ถ้ายังไม่ได้รัน migration ระบบไม่พัง — อ่านจะ fallback ลงชั้นก่อนหน้า และการนำเข้าจะขึ้น <code class="bg-slate-100 px-1 rounded text-xs">501</code> พร้อมบอกว่าต้องรัน migration</li>
         </ul>
 
         <div class="bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-xs text-green-800">
           💡 <b>สิ่งที่ได้จากการ "ตัดขาเขียนกลับ" ออก:</b> blocker หายหมดในทีเดียว — ไม่ต้องมี Box Custom App, ไม่ต้องให้ Box admin อนุมัติ, ไม่ต้องขอ Marubeni เชิญเป็น Editor, ไม่ต้องเก็บ credential ที่ต้องต่ออายุ, ไม่มีความเสี่ยงเขียนทับงานคนอื่นตอนแก้ไฟล์พร้อมกัน และไม่ต้องตอบคำถามว่าผู้ถูกตรวจควรเขียนไฟล์ผู้ตรวจไหม
+          <br><br>ปิดท้าย: พอตัดขาเขียนกลับออกแล้ว การ<b>ดึง</b>ไฟล์กลับกลายเป็นเรื่องง่ายจนไม่ต้องใช้อะไรที่เคยทำให้มันดูแพงเลย — ได้ปุ่ม Sync กดเดียวมาฟรี ๆ
         </div>
 
         <p class="text-xs text-slate-400 pt-1">สเปกเต็ม + ตารางการตัดสินใจ + non-goals: <code class="bg-slate-100 px-1 rounded">PRD.md § 13</code></p>
@@ -467,7 +477,7 @@
           <li><b class="text-amber-700">(v1.9 — blocking ก่อนออกบัญชีจริง)</b> role <code class="bg-slate-100 px-1 rounded">marubeni</code> คือการเปิดให้คนนอก AutoCorp login เข้าระบบได้จริงเป็นครั้งแรก — ต้องขอ go-ahead จากเจ้าของนโยบายข้อมูลก่อน ไม่ใช่แค่ตัดสินใจเชิงเทคนิค</li>
           <li><b>(v1.9)</b> <code class="bg-slate-100 px-1 rounded">marubeni</code> ควรเห็นประวัติ workflow/comment ภายใน (Reviewer/Approver) ด้วยไหม — ค่าเริ่มต้นที่เสนอคือ "ไม่เห็น"</li>
           <li><b>(v1.9)</b> <code class="bg-slate-100 px-1 rounded">self_assessment_note</code> (แช่ไว้ตอน seed) กับ <code class="bg-slate-100 px-1 rounded">box_remark</code> (อัปเดตทุกครั้งที่ import) มาจากคอลัมน์เดียวกัน — ตั้งใจให้แยกกัน แต่ต้องยืนยันว่าคนตรวจอ่านแล้วไม่สับสน</li>
-          <li><b>(v1.9)</b> Marubeni อัปเดตไฟล์บ่อยแค่ไหน — ถ้ากลายเป็นทุกสัปดาห์ ค่อยกลับมาคิดเรื่องดึงอัตโนมัติ</li>
+          <li><b>(v1.9)</b> Sync พึ่งพาการที่ Marubeni ยังเปิดสิทธิ์ให้โหลดไฟล์จากลิงก์ — ถ้าวันหนึ่งเขาปิด Sync จะขึ้น error ชัดเจนและตกไปใช้การอัปโหลดแทน (แค่ถอยลง ไม่ถึงกับพัง) แต่<b>จะไม่มีใครรู้จนกว่าจะมีคนกดปุ่ม</b> — ต้องตัดสินใจว่ารับได้ไหม</li>
         </ul>
       </div>
     </section>
