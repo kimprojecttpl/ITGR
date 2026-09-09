@@ -2,16 +2,21 @@
 // ITGR checklist workbook (PRD.md § 13).
 //
 // One-way by design: Marubeni owns the file and shares it read-only, so
-// nothing is ever written back. The workbook is uploaded by hand rather
-// than fetched from Box, which is why this endpoint needs no Box API, no
-// Box Custom App and no stored credentials.
+// nothing is ever written back.
+//
+// Two ways in, same code path after that:
+//   - `data_base64` in the body — the workbook uploaded by hand.
+//   - no body — fetch the admin-configured Box shared link directly. This
+//     is a plain public download, not the Box API, so it still needs no Box
+//     app and no credentials. It only works if Marubeni's link permits
+//     download; when it doesn't, the caller falls back to uploading.
 //
 // Never touches `status`/`workflow_state`: a Remark is context, not a
 // compliance verdict, and only User -> Reviewer -> Approver may set one
 // (PRD.md § Goal 6, § 13.2 D2).
 import { getSupabase } from "../lib/supabase.js";
 import { requireAnyRole } from "../lib/auth.js";
-import { parseChecklistRemarks } from "../lib/checklistRemarks.js";
+import { parseChecklistRemarks, boxDirectDownloadUrl } from "../lib/checklistRemarks.js";
 
 const UNDEFINED_COLUMN = "42703";
 const UNDEFINED_TABLE = ["42P01", "PGRST205"];
@@ -36,25 +41,64 @@ export default async function handler(req, res) {
   if (!session) return;
 
   const { file_name, data_base64 } = req.body || {};
-  if (typeof data_base64 !== "string" || !data_base64) {
-    res.status(400).json({ error: "data_base64 is required" });
-    return;
+  const supabase = getSupabase();
+
+  let buffer;
+  let sourceName = file_name || null;
+
+  if (typeof data_base64 === "string" && data_base64) {
+    buffer = Buffer.from(data_base64, "base64");
+  } else {
+    // No file supplied — try the configured Box link.
+    const { data: config, error: configErr } = await supabase
+      .from("box_checklist_source")
+      .select("box_url")
+      .eq("id", 1)
+      .maybeSingle();
+    if (configErr && !UNDEFINED_TABLE.includes(configErr.code)) {
+      res.status(500).json({ error: "Failed to load the Box link" });
+      return;
+    }
+    if (!config?.box_url) {
+      res.status(400).json({ error: "No Box link is configured yet — an admin can set it in the Admin tab, or upload the file instead" });
+      return;
+    }
+    let downloadUrl;
+    try {
+      downloadUrl = boxDirectDownloadUrl(config.box_url);
+    } catch (e) {
+      res.status(400).json({ error: e.message });
+      return;
+    }
+    let resp;
+    try {
+      resp = await fetch(downloadUrl, { redirect: "follow", signal: AbortSignal.timeout(20000) });
+    } catch (e) {
+      await logImport(supabase, { file_name: sourceName, items_updated: 0, success: false, error: `fetch failed: ${e.message}`, imported_by: session.sub });
+      res.status(502).json({ error: `Could not reach Box: ${e.message}` });
+      return;
+    }
+    if (!resp.ok) {
+      const msg = `Box refused the download (HTTP ${resp.status}) — the link may require a login or not allow downloads. Upload the file instead.`;
+      await logImport(supabase, { file_name: sourceName, items_updated: 0, success: false, error: msg, imported_by: session.sub });
+      res.status(502).json({ error: msg });
+      return;
+    }
+    buffer = Buffer.from(await resp.arrayBuffer());
+    sourceName = sourceName || "(fetched from Box)";
   }
 
-  const buffer = Buffer.from(data_base64, "base64");
   if (buffer.length === 0 || buffer.length > MAX_DECODED_BYTES) {
     res.status(400).json({ error: `File must be between 1 byte and ${MAX_DECODED_BYTES / (1024 * 1024)}MB` });
     return;
   }
-
-  const supabase = getSupabase();
 
   let remarks;
   try {
     remarks = await parseChecklistRemarks(buffer);
   } catch (e) {
     await logImport(supabase, {
-      file_name: file_name || null, items_updated: 0, success: false,
+      file_name: sourceName, items_updated: 0, success: false,
       error: e.message, imported_by: session.sub,
     });
     res.status(400).json({ error: `Could not read the workbook: ${e.message}` });
@@ -96,7 +140,7 @@ export default async function handler(req, res) {
       .upsert(changed, { onConflict: "item_no" });
     if (upsertErr) {
       await logImport(supabase, {
-        file_name: file_name || null, items_updated: 0, success: false,
+        file_name: sourceName, items_updated: 0, success: false,
         error: upsertErr.message, imported_by: session.sub,
       });
       res.status(500).json({ error: "Failed to save the imported remarks" });
@@ -105,7 +149,7 @@ export default async function handler(req, res) {
   }
 
   await logImport(supabase, {
-    file_name: file_name || null, items_updated: changed.length, success: true,
+    file_name: sourceName, items_updated: changed.length, success: true,
     error: null, imported_by: session.sub,
   });
 
