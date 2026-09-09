@@ -1,8 +1,8 @@
-// v1.9 (PROPOSED) — the single, system-wide Box link to the master checklist
-// workbook (PRD.md § 13.2, D1: corrected 2026-09-09 — one shared Excel
-// file, not one per item). GET is readable by anyone who can act on a
-// Remark (marubeni/admin); only admin can change it — same tier as any
-// other integration/config setting in this app.
+// v1.9 — where the master checklist workbook lives in Marubeni's Box.
+// This is a bookmark, not a connection: nothing here calls Box. It just
+// tells whoever runs the Remark import where to download the current copy
+// from (PRD.md § 13). GET is readable by anyone who can run an import
+// (marubeni/admin); only admin can change it.
 import { getSupabase } from "../../lib/supabase.js";
 import { requireAnyRole, requireRole } from "../../lib/auth.js";
 

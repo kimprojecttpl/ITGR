@@ -69,8 +69,8 @@ function gradeFor(pct){ return pct>=80?'A':pct>=60?'B':pct>=40?'C':pct>=20?'D':'
 // loaded through the BFF (/api/*) at startup — see init() at the bottom.
 let ITEMS = [], DRIVE = [], APPX = [], STATE = {};
 let ME = null; // { name, role } — set by init() after /api/me
-// v1.9 (proposed) — the single, system-wide Box link to the master
-// checklist workbook (PRD.md § 13.2, D1). Loaded once for marubeni/admin.
+// v1.9 — where the checklist workbook lives in Marubeni's Box. A bookmark
+// for whoever runs the import; nothing in the app calls Box (PRD.md § 13).
 let BOX_CHECKLIST_URL = '';
 async function loadBoxConfig(){
   try{ const r = await fetchJSON('/api/admin/box-config'); BOX_CHECKLIST_URL = r.box_url||''; render(); }
@@ -124,10 +124,10 @@ function canEditItem(){ return ME && (ME.role==='admin' || ME.role==='user'); }
 function canSubmit(){ return canEditItem(); }
 function canReview(){ return ME && (ME.role==='admin' || ME.role==='reviewer'); }
 function canApprove(){ return ME && (ME.role==='admin' || ME.role==='approver'); }
-// v1.9 (proposed) — `marubeni` is outside the internal workflow chain
-// entirely: it can't touch Owner/Evidence/status, only the Remark + a
-// manual Box sync trigger (PRD.md § 13.7).
-function canManageBoxRemark(){ return ME && (ME.role==='admin' || ME.role==='marubeni'); }
+// v1.9 — `marubeni` is outside the internal workflow chain entirely: it
+// can't touch Owner/Evidence/status. Its one action is running the Remark
+// import from the checklist workbook (PRD.md § 13.7).
+function canImportRemarks(){ return ME && (ME.role==='admin' || ME.role==='marubeni'); }
 
 let CATS = [];
 function rebuildCats(){
@@ -559,6 +559,7 @@ function tracker(){
   }).join('');
   return `<section class="mt-6">
     ${editable?'':trackerRoleBanner()}
+    ${remarkImportCard()}
     <div class="bg-white rounded-xl border border-slate-200 p-4 mb-4 noprint">
       <div class="flex flex-wrap gap-2 items-center">
         <input id="fq" value="${esc(FILTERS.q)}" placeholder="\u{1F50D} ${t('ค้นหา ชื่อข้อ / เนื้อหา / Article','Search name / content / article')}" class="text-xs border border-slate-300 rounded-lg px-3 py-1.5 flex-1 min-w-[220px]">
@@ -608,38 +609,24 @@ function selfAssessmentPanel(no){
   </div>`;
 }
 
-// ---------- BOX.COM REMARK SYNC (v1.9, PROPOSED — not a live Box connection) ----------
-// Informational only: never writes `status`/`workflow_state` (PRD.md § 13.2,
-// decision D2) — same separation instinct as selfAssessmentPanel above.
-// Editable only by marubeni/admin (§ 13.7); everyone else sees it read-only.
-//
-// Corrected design (2026-09-09): this is a cell in the "Remarks Column" of
-// the single shared master checklist workbook on Box — not a Box comment
-// thread. See § 13.4 for why (Box doesn't have per-row comments; a plain
-// cell value does exactly what was actually asked for).
+// ---------- REMARK FROM THE CHECKLIST WORKBOOK (v1.9) ----------
+// A read-only mirror of the workbook's "Remarks Column" cell for this item.
+// Nothing in the app edits it — it changes only when someone imports a newer
+// copy of the workbook — so what is shown here is always exactly what the
+// spreadsheet says, with no second version of the truth to reconcile.
+// It is never `status`/`workflow_state`: a Remark is context, not a verdict
+// (PRD.md § 13.2 D2), the same separation as selfAssessmentPanel above.
 function boxRemarkPanel(no){
   const s=STATE[no]||{};
   const remark=s.boxRemark||'';
-  const by=s.boxRemarkBy||'';
+  if(!remark) return '';
   const at=s.boxRemarkAt||'';
-  const src=s.boxRemarkSource||'';
-  const srcLabel=src==='box'?t('จาก Excel ใน Box','from the Excel file in Box'):src==='app'?t('พิมพ์ในแอป','typed in-app'):'';
-  const manage=canManageBoxRemark();
-  if(!manage && !remark) return '';
   return `<div class="mt-3 pt-3 border-t border-slate-200">
     <div class="flex items-center gap-2 flex-wrap mb-1">
-      <span class="text-xs font-bold text-slate-500">${t('Remark จาก Box','Remark from Box')} <span class="text-amber-500 font-normal">(proposed)</span></span>
-      ${by||at?`<span class="text-[10px] text-slate-400">${esc(by)}${by&&at?' · ':''}${at?new Date(at).toLocaleString():''}${srcLabel?' · '+srcLabel:''}</span>`:''}
-      ${manage&&BOX_CHECKLIST_URL?`<a href="${esc(BOX_CHECKLIST_URL)}" target="_blank" rel="noopener" class="text-[10px] text-sky-600 hover:underline">\u{1F4E6} ${t('เปิดไฟล์ใน Box','Open file in Box')}</a>`:''}
+      <span class="text-xs font-bold text-slate-500">${t('Remark จากไฟล์ checklist (Marubeni)','Remark from the checklist workbook (Marubeni)')}</span>
+      ${at?`<span class="text-[10px] text-slate-400">${t('อัปเดตล่าสุด','last changed')} ${new Date(at).toLocaleString()}</span>`:''}
     </div>
-    ${manage
-      ?`<textarea id="box-remark-${no}" rows="2" placeholder="${t('พิมพ์ remark เอง หรือรอดึงจากคอลัมน์ Remark ในไฟล์ Excel (ยังไม่เชื่อมต่อจริง)','Type a remark, or wait for it to be pulled from the Remarks column in the Excel file (not connected yet)')}" class="w-full text-sm border border-slate-300 rounded-lg px-2 py-1.5">${esc(remark)}</textarea>
-       <div class="flex gap-2 mt-1.5">
-         <button onclick="saveBoxRemark(${no})" class="text-xs px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white">${t('บันทึก Remark','Save Remark')}</button>
-         <button onclick="syncToBox(${no})" class="text-xs px-2.5 py-1 rounded-lg bg-sky-100 hover:bg-sky-200 text-sky-700">\u{1F4E4} ${t('Sync to Box','Sync to Box')}</button>
-       </div>
-       <div class="text-[10px] text-slate-400 mt-1">${t('ยังไม่มีการเชื่อมต่อ Box จริง — กด Sync to Box ตอนนี้จะขึ้น error ที่คาดไว้ (ดู PRD.md § 13.6)','Box is not connected yet — Sync to Box will return an expected error right now (see PRD.md § 13.6)')}</div>`
-      :`${remark?`<div class="text-sm text-slate-600 whitespace-pre-line bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">${esc(remark)}</div>`:''}`}
+    <div class="text-sm text-slate-600 whitespace-pre-line bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">${esc(remark)}</div>
   </div>`;
 }
 
@@ -660,7 +647,7 @@ function trackerRoleBanner(){
     reviewer:t('คุณเป็น Reviewer — ตรวจทานรายการที่ "รอตรวจทาน" ได้ (คลิกเปิดรายการ) แก้ไข Owner/Evidence/Task ไม่ได้','You are a Reviewer — you can review items in "Pending Review" (expand a row), but cannot edit Owner/Evidence/Task.'),
     approver:t('คุณเป็น Approver — ตัดสินรายการที่ "รออนุมัติ" ได้ (คลิกเปิดรายการ) แก้ไข Owner/Evidence/Task ไม่ได้','You are an Approver — you can decide items in "Pending Approval" (expand a row), but cannot edit Owner/Evidence/Task.'),
     read_only:t('คุณมีสิทธิ์อ่านอย่างเดียว ไม่สามารถแก้ไขหรือดำเนินการใดๆ ได้','You have read-only access — nothing here can be edited or actioned.'),
-    marubeni:t('คุณเป็นบทบาท Marubeni (proposed) — ดูได้ทุกหน้า เขียน Remark และสั่ง Sync to Box ได้ (คลิกเปิดรายการ) แก้ไข Owner/Evidence/status ไม่ได้','You have the Marubeni role (proposed) — you can view everything, write a Remark, and trigger Sync to Box (expand a row), but cannot edit Owner/Evidence/status.')
+    marubeni:t('คุณเป็นบทบาท Marubeni — ดูได้ทุกหน้า และนำเข้า Remark จากไฟล์ checklist ได้ (กล่องด้านบน) แก้ไข Owner/Evidence/status ไม่ได้','You have the Marubeni role — you can view everything and import Remarks from the checklist workbook (box above), but cannot edit Owner/Evidence/status.')
   }[ME&&ME.role] || '';
   return msg?`<div class="bg-amber-50 border border-amber-200 text-amber-700 text-xs rounded-xl p-3 mb-4">${msg}</div>`:'';
 }
@@ -787,7 +774,7 @@ async function refreshItems(){
     const res=await fetchJSON('/api/items');
     ITEMS=res.items;
     STATE={};
-    ITEMS.forEach(it=>{ STATE[it.no]={status:it.status, owner:it.owner, note:it.note, clickupUrl:it.clickupUrl, workflowState:it.workflowState, selfAssessment:it.selfAssessment, selfAssessmentNote:it.selfAssessmentNote, boxRemark:it.boxRemark, boxRemarkBy:it.boxRemarkBy, boxRemarkAt:it.boxRemarkAt, boxRemarkSource:it.boxRemarkSource}; });
+    ITEMS.forEach(it=>{ STATE[it.no]={status:it.status, owner:it.owner, note:it.note, clickupUrl:it.clickupUrl, workflowState:it.workflowState, selfAssessment:it.selfAssessment, selfAssessmentNote:it.selfAssessmentNote, boxRemark:it.boxRemark, boxRemarkAt:it.boxRemarkAt}; });
     HISTORY={};
   }finally{ render(); }
 }
@@ -956,7 +943,7 @@ async function loadAdminData(){
       fetchJSON('/api/admin/tokens')
     ]);
     ADMIN_USERS = u.users; ADMIN_AUDIT = a.entries; ADMIN_TOKENS = tk.tokens;
-    await loadBoxConfig(); // v1.9 (proposed) — keeps the Admin panel's field in sync too
+    await loadBoxConfig(); // v1.9 — keeps the Admin panel's field in sync too
   } finally {
     ADMIN_LOADING = false; render();
   }
@@ -1143,32 +1130,47 @@ async function setField(n,k,v){
     alert(t('บันทึกไม่สำเร็จ: ','Failed to save: ')+err.message);
   }
 }
-// v1.9 (proposed) — Remark uses its own endpoint (marubeni/admin only,
-// never touches status/workflow_state) rather than the generic setField
-// PATCH, matching how the role is scoped server-side (§ 13.7).
-async function saveBoxRemark(n){
-  const el=document.getElementById('box-remark-'+n);
-  if(!el) return;
+// v1.9 — import the Remarks column from an uploaded copy of the checklist
+// workbook (marubeni/admin only). One-way: Marubeni owns the file, so
+// nothing is ever written back to it (PRD.md § 13).
+let IMPORT_BUSY=false, IMPORT_RESULT=null;
+async function importRemarks(ev){
+  ev.preventDefault();
+  const input=document.getElementById('remark-file');
+  const file=input && input.files && input.files[0];
+  if(!file){ alert(t('เลือกไฟล์ .xlsx ก่อน','Choose an .xlsx file first')); return; }
+  IMPORT_BUSY=true; IMPORT_RESULT=null; render();
   try{
-    const res = await fetchJSON('/api/items/'+n+'/box-remark', { method:'PATCH', body:{ remark: el.value } });
-    STATE[n]=STATE[n]||{};
-    STATE[n].boxRemark=el.value;
-    STATE[n].boxRemarkBy=res.box_remark_by||'';
-    STATE[n].boxRemarkAt=res.box_remark_at||'';
-    STATE[n].boxRemarkSource=res.box_remark_source||'app';
-    render();
+    const data_base64=await fileToBase64(file);
+    const res=await fetchJSON('/api/import-remarks', { method:'POST', body:{ file_name:file.name, data_base64 } });
+    IMPORT_RESULT={ ok:true, ...res };
+    await refreshItems();
   }catch(err){
-    alert(t('บันทึก Remark ไม่สำเร็จ: ','Failed to save remark: ')+err.message);
+    IMPORT_RESULT={ ok:false, error:err.message };
+  }finally{
+    IMPORT_BUSY=false; render();
   }
 }
-async function syncToBox(n){
-  try{
-    await fetchJSON('/api/items/'+n+'/box-sync', { method:'POST' });
-    alert(t('ส่งไป Box สำเร็จ','Synced to Box'));
-  }catch(err){
-    // Expected right now — no Box Custom App is connected yet (§ 13.6).
-    alert(t('Sync to Box ไม่สำเร็จ (คาดไว้ — ยังไม่เชื่อมต่อ Box จริง): ','Sync to Box failed (expected — Box is not connected yet): ')+err.message);
-  }
+// The import card lives on the Tracker tab, not the Admin tab — `marubeni`
+// is the role that runs it and cannot see Admin.
+function remarkImportCard(){
+  if(!canImportRemarks()) return '';
+  const r=IMPORT_RESULT;
+  return `<div class="bg-white rounded-xl border border-sky-200 p-4 mb-4 noprint">
+    <div class="flex items-center gap-2 flex-wrap mb-1">
+      <span class="text-sm font-bold text-blue-800">\u{1F4E5} ${t('นำเข้า Remark จากไฟล์ checklist','Import Remarks from the checklist workbook')}</span>
+      ${BOX_CHECKLIST_URL?`<a href="${esc(BOX_CHECKLIST_URL)}" target="_blank" rel="noopener" class="text-xs text-sky-600 hover:underline">\u{1F4E6} ${t('เปิดไฟล์ใน Box เพื่อดาวน์โหลดตัวล่าสุด','Open the file in Box to download the current copy')}</a>`:''}
+    </div>
+    <p class="text-xs text-slate-400 mb-2">${t('โหลดไฟล์ .xlsx ตัวล่าสุดจาก Box แล้วอัปโหลดที่นี่ — ระบบจะอ่านคอลัมน์ Remarks แล้วอัปเดตทุกข้อที่เปลี่ยน (ไม่แตะสถานะ และไม่เขียนอะไรกลับไปที่ไฟล์ของ Marubeni)','Download the current .xlsx from Box and upload it here — the Remarks column is read and every changed item is updated. Status is untouched, and nothing is ever written back to Marubeni\'s file.')}</p>
+    <form onsubmit="importRemarks(event)" class="flex flex-wrap gap-2 items-center">
+      <input id="remark-file" type="file" accept=".xlsx" class="text-xs">
+      <button ${IMPORT_BUSY?'disabled':''} class="text-xs px-3 py-1.5 rounded-lg ${IMPORT_BUSY?'bg-slate-200 text-slate-400':'bg-blue-600 hover:bg-blue-700 text-white'}">${IMPORT_BUSY?t('กำลังนำเข้า...','Importing...'):t('นำเข้า','Import')}</button>
+    </form>
+    ${r?(r.ok
+      ?`<div class="text-xs text-green-700 bg-green-50 border border-green-100 rounded-lg px-3 py-2 mt-2">\u{2705} ${t('อัปเดตแล้ว','Updated')} <b>${r.updated}</b> ${t('ข้อ','items')} · ${t('เหมือนเดิม','unchanged')} ${r.unchanged} · ${t('อ่านจากไฟล์','read from file')} ${r.rows_in_file} ${t('แถว','rows')}${r.unknown_items&&r.unknown_items.length?` · ${t('ข้ามข้อที่ไม่รู้จัก','skipped unknown items')}: ${r.unknown_items.join(', ')}`:''}</div>`
+      :`<div class="text-xs text-red-700 bg-red-50 border border-red-100 rounded-lg px-3 py-2 mt-2">\u{26A0}\u{FE0F} ${esc(r.error)}</div>`)
+    :''}
+  </div>`;
 }
 function clearFilters(){ FILTERS={cat:"",risk:"",pri:"",status:"",type:"",q:""}; render(); }
 function bind(){
@@ -1213,9 +1215,9 @@ async function init(){
   DRIVE = driveRes.folders;
   APPX = appxRes.appendices;
   STATE = {};
-  ITEMS.forEach(it=>{ STATE[it.no] = { status: it.status, owner: it.owner, note: it.note, clickupUrl: it.clickupUrl, workflowState: it.workflowState, selfAssessment: it.selfAssessment, selfAssessmentNote: it.selfAssessmentNote, boxRemark: it.boxRemark, boxRemarkBy: it.boxRemarkBy, boxRemarkAt: it.boxRemarkAt, boxRemarkSource: it.boxRemarkSource }; });
+  ITEMS.forEach(it=>{ STATE[it.no] = { status: it.status, owner: it.owner, note: it.note, clickupUrl: it.clickupUrl, workflowState: it.workflowState, selfAssessment: it.selfAssessment, selfAssessmentNote: it.selfAssessmentNote, boxRemark: it.boxRemark, boxRemarkAt: it.boxRemarkAt }; });
   rebuildCats();
-  if(canManageBoxRemark()) loadBoxConfig();
+  if(canImportRemarks()) loadBoxConfig();
   render();
 }
 init();

@@ -2,7 +2,7 @@
 
 **Owner:** COE&S — AutoCorp (ATC)
 **Version:** 1.8
-**Status:** v1.0–v1.8 all shipped, migrated, and verified live in production (`https://itgrmrbn.vercel.app`). No open deploy gates as of this revision. § 13 covers a **partially built, not-yet-connected** v1.9 proposal (Box.com Remark Sync): the role, endpoints, UI and xlsx read/write logic are built and tested, but the Box connection itself is blocked on a Box Custom App, and its migration has not been applied yet.
+**Status:** v1.0–v1.8 all shipped, migrated, and verified live in production (`https://itgrmrbn.vercel.app`). No open deploy gates as of this revision. § 13 covers v1.9 (Remark import from the Marubeni checklist workbook), shipped 2026-09-09 — one-way, upload-based, with no Box API or credentials anywhere in it.
 **Source:** Derived from current codebase (`index.html`, `/api/*`), explicit stakeholder direction, and the **Marubeni ITGR Checklist FY2026 Ver.1** workbook (updated 3 Apr 2026). Re-verified against `source/Marubeni_Group_IT_Governance_Rules_Checklist_English.xlsx` on 2026-09-08 — re-running `scripts/extract-xlsx.py` against that exact file reproduces `data/items.json` and `data/assessment.json` byte-for-byte, confirming the repo, the production database, and the source workbook all agree.
 
 ## Version History
@@ -19,7 +19,7 @@
 | 1.6 | 2026-08-27 | **External Read API** (`/api/v1/*`): bearer-token, read-only access for external systems (n8n, LINE bot, Claude, etc.), with scoped tokens (`items:read` / `summary:read` / `history:read`), per-token rate limiting, and a request audit log. Fully specified in § 12 below (condensed from the original standalone [docs/PRD-external-api.md](docs/PRD-external-api.md), which remains as the deeper acceptance-criteria reference). Migration applied and live-verified in production 2026-08-27. |
 | 1.7 | 2026-09-03 | **FY2026 alignment.** Refresh the 96 requirements from the FY2026 Ver.1 workbook (10 revised; structure, categories and risk ratings unchanged). Restore **`Not Applicable`** as a sixth status — reversing part of the v1.3 merge, because FY2026 uses it for 8 requirements and Marubeni's scoring *excludes* them from the denominator rather than failing them. Add the **Marubeni Official Assessment** panel: the risk-weighted A–E score computed exactly as the auditor computes it (Very High 7 / High 5 / Middle 3 / Low 0), from an imported self-assessment held in new `self_assessment` columns kept deliberately separate from workflow-driven `status`. Migration applied and self-assessment data (96/96 items) imported into production 2026-09-08. |
 | 1.7b | 2026-09-08 | **Self-assessment on the External Read API.** v1.7's `self_assessment`/`self_assessment_note` reached the dashboard and the internal `/api/items` endpoint, but not `/api/v1/*` — a token could validate `status=Not Applicable` (it shares the same enum source) but couldn't actually read the self-assessment answer. `GET /api/v1/items` and `GET /api/v1/items/{no}` now return both fields; `GET /api/v1/meta` documents `self_assessment_marks` and a new `self_assessment` filter so an external caller discovers the field the same way it discovers everything else — by reading `/meta`, not by someone hand-writing an integration. |
-| 1.9 | 2026-09-08 (drafted) · 2026-09-09 (design corrected, partially built) | **PROPOSED — Box connection not yet live.** Box.com Remark Sync: one system-wide link to the shared master checklist workbook; ITGR reads and writes each item's cell in that workbook's **"Remarks Column"** (the same column `scripts/extract-xlsx.py` imports once, offline, into `self_assessment_note`) as a live, purely informational `box_remark`. Adds a `marubeni` role for the external Marubeni-side reviewer. Deliberately mirrors the v1.7 self-assessment separation — a synced Remark is never a write to `status`/`workflow_state`; only User → Reviewer → Approver may set a compliance verdict (§ Goal 6). **The 2026-09-08 draft modeled this as Box *comment threads* on a per-item folder — corrected 2026-09-09 (§ 13); nothing from that version reached production.** Role, endpoints, UI, migration SQL and the xlsx read/write logic are built and tested; the two Box HTTP calls remain stubs pending a Box Custom App. Full spec in § 13. |
+| 1.9 | 2026-09-08 (drafted) · 2026-09-09 (scope settled, shipped) | **Remark import from the checklist workbook.** The workbook's **"Remarks Column"** (the same column `scripts/extract-xlsx.py` reads at seed time into `self_assessment_note`) is mirrored per item into a read-only `box_remark`, so a reviewer's note in that spreadsheet reaches the dashboard without anyone re-typing it. Adds a `marubeni` role for the external Marubeni-side reviewer, whose one action is running the import. Never writes `status`/`workflow_state` — only User → Reviewer → Approver may set a compliance verdict (§ Goal 6). **One-way by necessity: the workbook lives in Marubeni's Box and reaches AutoCorp as a read-only shared link, so there is no write-back, no Box API, no Box Custom App and no stored credentials — the file is uploaded by hand (§ 13).** Two earlier drafts (per-item Box folders, then two-way sync) were corrected before shipping; the second reached production as schema only. |
 
 ---
 
@@ -76,7 +76,7 @@ All permission checks are enforced in the BFF handler, not just in frontend rend
 
 v1.3 introduces a **per-item approval workflow** (User → Reviewer → Approver) that sits on top of, and changes, the existing role model. The `read_write` tier — previously "can update tracker state" — is split into three workflow-specific roles that each act at a different stage of the same item:
 
-| Capability | `admin` | `user` | `reviewer` | `approver` | `read_only` | `marubeni` *(v1.9, proposed)* |
+| Capability | `admin` | `user` | `reviewer` | `approver` | `read_only` | `marubeni` *(v1.9)* |
 |---|---|---|---|---|---|---|
 | View all tabs | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Edit item's Owner / Evidence(note) / ClickUp Task link | ✅ | ✅ (own/assigned items) | ❌ | ❌ | ❌ | ❌ |
@@ -84,8 +84,7 @@ v1.3 introduces a **per-item approval workflow** (User → Reviewer → Approver
 | Review a submitted item: OK (→ Approver) or Reject (→ back to User) with comment | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ |
 | Make the final decision: Compliant / Complied with Condition / Not Compliant, with comment + evidence | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ |
 | Edit checklist master data, manage users, view audit log | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **(v1.9, proposed)** Write the Remark field directly in-app (an alternative to editing the shared workbook in Box) | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ |
-| **(v1.9, proposed)** Trigger a manual "Sync to Box" (push current status + remark into the workbook now) | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| **(v1.9)** Import the Remarks column from an uploaded copy of the checklist workbook | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ |
 
 `admin` can act in any workflow stage (break-glass / cover for absence), everyone else is scoped to exactly one stage. This mirrors segregation-of-duties expectations for a compliance sign-off process — the preparer, reviewer, and approver should not default to the same person. **`marubeni`** is a different kind of exception, not a workflow stage — it represents an external Marubeni-side reviewer who is not part of AutoCorp's internal preparer→reviewer→approver chain at all; see § 13.7 for the full rationale, including a real tension it raises against this PRD's own stated non-goals.
 
@@ -281,7 +280,7 @@ so that the link to the remediation work stays current without needing to reopen
 - **(v1.3)** SLA/due-date tracking with an overdue flag once an item enters `Pending Review`/`Pending Approval`.
 - **(v1.4)** Locking Owner/Evidence during `Pending Review`/`Pending Approval` too, not just after a terminal decision (see § Non-Goals).
 - **(v1.4)** A "what changed since last approval" diff view when an item is reopened and resubmitted.
-- **(Proposed, v1.9)** Box.com Remark Sync — one shared checklist workbook on Box; read/write each item's cell in its "Remarks Column" as an informational Remark, and add a `marubeni` role for the external reviewer. Full spec in § 13; the Box connection itself is blocked on naming who authorizes the Box Custom App (§ 9).
+- ~~**(Proposed, v1.9)** Box.com Remark Sync~~ — shipped 2026-09-09 as a one-way **Remark import** (§ 13): the checklist workbook is uploaded by hand and its "Remarks Column" mirrored per item, plus a `marubeni` role for the external reviewer.
 
 ## 7. Data Model (overview)
 
@@ -299,13 +298,13 @@ Full DDL lives in `supabase/schema.sql`.
 - `item_status.status` check constraint gains a sixth value, `Not Applicable` (alongside `Not Compliant`, which v1.3 introduced).
 - `item_status.self_assessment` (text, nullable, one of `〇` / `×` / `-`) and `item_status.self_assessment_note` (text) — the workbook's recorded answer and remarks, never written by the approval workflow.
 
-### v1.9 additions (proposed — not yet built — see § 13)
+### v1.9 additions (see § 13)
 
-- `box_checklist_source` (new, singleton — `id = 1` check) — `box_url`, `updated_by`, `updated_at`. The **one** system-wide link to the shared master checklist workbook (decision D1, § 13.2). There is no per-item Box column: one workbook covers all 96 items.
-- `item_status.box_remark` / `.box_remark_by` / `.box_remark_at` — the current Remarks-column cell text for this item, plus who/when. Deliberately separate from `item_status.self_assessment_note` (the frozen FY2026 import of the same underlying column) and from `status`/`workflow_state` — informational only. `box_remark_by` stays blank for pulled values: a spreadsheet cell carries no author metadata.
-- `item_status.box_remark_source` (text, `'box'`|`'app'`) — whether the current `box_remark` came from the workbook (pull) or was typed in-app by a `marubeni`/`admin` user (§ 13.7).
-- `box_sync_log` (new, append-only) — id, item_no (nullable — one pull refreshes every item in a single pass), direction (`pull`|`push`), remark_text, success, error, triggered_by (nullable FK → users, set only for a manual "Sync to Box"), created_at.
-- `users.role` check constraint gains a sixth value, `marubeni` (§ 4a, § 13.7) — a role outside the internal preparer→reviewer→approver chain, scoped to viewing + the two Box-remark actions above.
+- `box_checklist_source` (singleton — `id = 1` check) — `box_url`, `updated_by`, `updated_at`. A **bookmark**, not a connection: the Box shared link for the master checklist workbook, so whoever runs the import knows where to download the current copy. Nothing in the app calls Box.
+- `item_status.box_remark` / `.box_remark_at` — the workbook's Remarks-column text for this item, and when it last changed. Written only by the import; read-only everywhere else, so there is no author to record. Kept separate from `self_assessment_note`, which is frozen at seed time and feeds the official Marubeni score — collapsing them would quietly change what that score means.
+- `remark_import_log` (append-only) — id, file_name, items_updated, success, error, imported_by, created_at. One row per import run, not per item.
+- `users.role` check constraint gains a sixth value, `marubeni` (§ 4a, § 13.7) — a role outside the internal preparer→reviewer→approver chain, scoped to viewing + running the import.
+- *Superseded:* an earlier two-way draft of this migration reached production and also created `box_remark_by`, `box_remark_source` and `box_sync_log`. All three are unused under the one-way design; `supabase/schema.sql` ends with a commented-out, optional cleanup that drops them.
 
 ### v1.6 additions (External Read API — see § 12)
 
@@ -355,14 +354,11 @@ Full DDL lives in `supabase/schema.sql`.
 - **(v1.6, non-blocking)** Is 60 requests/minute per token enough for batch automation (e.g. an n8n flow that walks all 96 items)? — assumed yes pending real usage; revisit after the first month.
 - **(v1.6, non-blocking)** How long should `api_request_log` rows be retained? — no policy set yet; 90 days proposed but not confirmed.
 - **(v1.6, non-blocking)** Should `GET /api/v1/openapi.json` (auto-import into n8n/Custom GPT/Claude as a tool, no hand-written integration) and per-token IP allowlisting move from P1 to P0? — both remain unbuilt; IP allowlisting gained importance once token expiry was decided against (D2 in § 12.7) since it becomes the second line of defense if a token leaks.
-- **(v1.9, proposed, blocking the Box connection)** Who at AutoCorp/Marubeni can authorize a Box Custom App at the enterprise level? This is an external Box-admin action outside this codebase (same class of dependency as "Supabase project must be provisioned," § 10) — everything else in v1.9 is built, but nothing can actually reach Box without it.
-- **(v1.9, proposed, blocking push)** Concurrent-edit safety: push is download → modify → re-upload, which can clobber someone editing the workbook in Box at the same moment (§ 13.6). Needs a version precondition on upload and a decided conflict behaviour before push is enabled for real.
-- **(v1.9, proposed, non-blocking)** Poll interval for the pull job — proposed every 15–30 min via Vercel Cron; confirm this cadence is acceptable given the sync is informational, not a live conversation.
-- **(v1.9, proposed, non-blocking)** Should the push direction also fire on Owner/Evidence(note) edits, not just `status`/`workflow_state` changes? Proposed scope is status changes only, to keep the appended lines in the cell sparse; can extend later if the team wants every edit mirrored.
-- **(v1.9, proposed, non-blocking)** `self_assessment_note` (frozen at the v1.7 import) and `box_remark` (live-synced) both originate from the same Remarks Column — deliberate (§ 13.5), but confirm it reads clearly to an actual auditor rather than looking like one field shown twice with different values.
-- **(v1.9, proposed, non-blocking)** Retention of `box_sync_log` — no policy proposed yet; likely the same answer as `api_request_log`'s open retention question above.
-- **(v1.9, proposed, blocking before real accounts are issued)** The `marubeni` role (§ 13.7, decision D3) gives an external Marubeni-side person a real ITGR login for the first time — this revisits § 3's "internal tool only" framing and § 12.3's parked "direct access for Marubeni or other external parties." Needs an explicit go-ahead from whoever owns AutoCorp/Marubeni's data-access policy, not just an engineering decision, before any real `marubeni` account is created.
-- **(v1.9, proposed, non-blocking)** Should `marubeni` see internal workflow/reviewer comments (`item_workflow_events`)? Proposed default is no (mirrors the External API's `history:read` opt-in scope, D3 in § 12.7) — confirm this matches what Marubeni actually needs to do their review.
+- **(v1.9, non-blocking)** `self_assessment_note` (frozen at seed time) and `box_remark` (refreshed on every import) both originate from the same Remarks Column — deliberate (§ 13.5), but confirm it reads clearly to an actual auditor rather than looking like one field shown twice with different values.
+- **(v1.9, non-blocking)** How often does Marubeni actually update the workbook? The manual-upload design is right if that's monthly-ish; if it turns out to be weekly, automating the fetch becomes worth revisiting (§ 13.9).
+- **(v1.9, non-blocking)** Retention of `remark_import_log` — no policy set; likely the same answer as `api_request_log`'s open retention question above.
+- **(v1.9, blocking before real accounts are issued)** The `marubeni` role (§ 13.7, decision D3) gives an external Marubeni-side person a real ITGR login for the first time — this revisits § 3's "internal tool only" framing and § 12.3's parked "direct access for Marubeni or other external parties." Needs an explicit go-ahead from whoever owns AutoCorp/Marubeni's data-access policy, not just an engineering decision, before any real `marubeni` account is created.
+- **(v1.9, non-blocking)** Should `marubeni` see internal workflow/reviewer comments (`item_workflow_events`)? Proposed default is no (mirrors the External API's `history:read` opt-in scope, D3 in § 12.7) — confirm this matches what Marubeni actually needs to do their review.
 
 ## 10. Timeline Considerations
 
@@ -467,98 +463,91 @@ The first production deployment of this API (2026-08-27) logged requests in a `t
 
 The fix (shipped same day, hotfix PR): **log first, then respond.** Every `/api/v1/*` exit point — success and every error — now writes its `api_request_log` row before calling `res.json()`, so the insert always completes while the function is unambiguously still executing. Verified by firing 9 varied requests (200/400/401/403/404) at production after the fix: 9/9 logged. This is recorded here specifically so nobody "cleans up" the ordering in `lib/apiAuth.js`'s `respond()`/`respondError()` later without knowing why it's like that.
 
-## 13. Box.com Remark Sync (Proposed — v1.9, not yet built)
+## 13. Remark Import from the Checklist Workbook (v1.9)
 
-*Requested by the stakeholder ("ปรับ prd เพิ่ม ให้สามารถ config path สำหรับเชื่อม box.com เพื่อดึง Status ที่ได้รับ comment กลับมา รวมถึง สามารถ sync status กลับ box.com ได้ด้วย") on 2026-09-08. This section is a spec only — the mechanism below (§ 13.4/13.6) is real, tested code (`lib/boxSync.js`), but the actual Box download/upload calls are still stubs, since no Box Custom App exists yet (§ 13.6, § 9).*
+*Requested 2026-09-08 ("ปรับ prd เพิ่ม ให้สามารถ config path สำหรับเชื่อม box.com เพื่อดึง Status ที่ได้รับ comment กลับมา รวมถึง สามารถ sync status กลับ box.com ได้ด้วย"), scope settled 2026-09-09.*
 
-*Design correction, 2026-09-09 (stakeholder): the original 2026-09-08 draft of this section modeled the sync as a Box Comments API integration on files inside a per-item folder. That was wrong — clarified directly by the stakeholder: "ผมต้องการ comment ใน file excel ที่ share ใน box.com ครับ ไม่ใช่ comment ของ push/pull" and "จริงๆ Comment ที่ว่า คือ เนื้อหาใน Cell ที่ผมสร้าง 1 column เอาไว้ สำหรับเป็น Remark แต่ละแถว." The whole section below reflects the corrected design; nothing from the 2026-09-08 folder/Comments-API version was ever applied to production, so it's fully replaced here rather than layered on.*
+*This section took two corrections to get right, both worth recording because each one removed work rather than adding it:*
+
+1. *The first draft modeled it as **Box comment threads** on a per-item Box folder. Wrong — clarified as "ผมต้องการ comment ใน file excel ที่ share ใน box.com ครับ ไม่ใช่ comment ของ push/pull … จริงๆ Comment ที่ว่า คือ เนื้อหาใน Cell ที่ผมสร้าง 1 column เอาไว้ สำหรับเป็น Remark แต่ละแถว." It is a **spreadsheet cell**, in **one** workbook, not a discussion thread on 96 folders.*
+2. *The second draft was two-way (read + write back via the Box API). Dropped once it emerged that **the workbook lives in Marubeni's Box** and reaches AutoCorp as a read-only shared link — writing to it would need Marubeni to grant Editor collaboration, and would mean the audited party's system editing the auditor's own control document. The stakeholder's call: "ไม่ต้อง update กลับ เอาแค่ ถึง update มาพอ."*
+
+*What shipped is the smallest thing that delivers the actual need, and it has no Box integration in it at all.*
 
 ### 13.1 Problem Statement
 
-There is exactly one Box-hosted file that matters here: the single master checklist workbook (e.g. `Marubeni_Group_IT_Governance_Rules_Checklist_English.xlsx` — the same file `scripts/extract-xlsx.py` already reads once, offline, at import time). That workbook has a **"Remarks Column (Reasons for the Check Results, etc.)"** — column T in the FY2026 layout, header row 8 — where a plain per-row cell value carries free-text justification for each of the 96 items. Today ITGR only ever sees that column through a one-time, point-in-time import (into `self_assessment_note`, v1.7): whatever anyone types into that cell in the live Box-hosted copy afterward is invisible to ITGR, and ITGR's own status has no way to reach back into that same cell either.
+The master ITGR checklist workbook has a **"Remarks Column (Reasons for the Check Results, etc.)"** — column T in the FY2026 layout — where a free-text note per requirement explains the check result. `scripts/extract-xlsx.py` already reads that column once, at seed time, into `self_assessment_note`. But Marubeni keeps editing the live copy in their own Box, and none of those edits reach the dashboard: someone has to open the spreadsheet and read it, or re-type notes by hand.
 
-### 13.2 Decisions (stakeholder)
+### 13.2 Decisions
 
 | # | Question | Decision | Why it matters |
 |---|---|---|---|
-| D1 | Is the configured Box path a per-item folder, or a single file? | **A single, system-wide link to the master checklist workbook** (2026-09-09, corrected from the original 2026-09-08 per-item-folder draft) | There is exactly one workbook for the whole 96-item checklist, not one per item. Config lives in one place (Admin tab → `box_checklist_source`, § 13.5), not on all 96 items. |
-| D1b | What counts as "the comment" to pull/push? | **The literal cell value in the Remarks Column, per row** — not a Box discussion comment/thread at all | Box's Comments API was never the right tool here (and doesn't support per-row/per-cell comments in any case). The mechanism is: download the workbook, read/write one cell by matching the row's item number, re-upload. See § 13.4/13.6. |
-| D2 | Does a synced Remark affect the real compliance `status`? | **No — it maps to the checklist's Remark concept only.** Informational, never a write to `status`/`workflow_state` | Mirrors the v1.7 self-assessment separation exactly (§ 6, "Self-assessment is stored separately from `status`"): only the User → Reviewer → Approver workflow may set a compliance verdict (§ Goal 6). Anyone with edit access to the shared workbook could otherwise effectively "speak for" a compliance decision without going through Review/Approval. |
-| D3 | Should the person supplying the Remark get a real ITGR login, not just Box access? | **Yes — a new role, `marubeni`** (§ 13.7), that can view the dashboard, write the Remark in-app, and manually trigger a push to Box | Requested by the stakeholder on 2026-09-08 so the Marubeni-side reviewer isn't limited to editing the shared workbook directly and waiting for the next poll cycle. This is a real scope change worth naming explicitly — see § 13.7 for the tension it raises against this PRD's own `read_only`/internal-tool framing. |
-| D4 | Does a push **overwrite** the Remarks cell, or **append** to it? | **Append only, tagged `[ITGR] ...`, on a new line — never delete or replace existing content** (2026-09-09) | The same cell may already carry a real human note (from AutoCorp or Marubeni). A naive overwrite on push would silently destroy audit-relevant text nobody asked to delete. Tested: `lib/boxSync.js`'s `writeChecklistRemark()` always appends, verified round-trip against the real workbook (§ 13.6). |
+| D1 | Per-item Box folder, or one file? | **One workbook for the whole checklist** (2026-09-09) | 96 items live in one spreadsheet. Configuration is one setting, not 96 link fields. |
+| D2 | What is "the comment"? | **The literal cell value in the Remarks Column, per row** — not a Box comment thread | Box has no per-row comments; a cell value is exactly what was being described. |
+| D3 | Does an imported Remark affect compliance `status`? | **No.** Informational only, never a write to `status`/`workflow_state` | Mirrors the v1.7 self-assessment separation (§ 6): only User → Reviewer → Approver may set a verdict (§ Goal 6). A spreadsheet anyone can edit must never become a backdoor around that. |
+| D4 | Does the reviewer get an ITGR login? | **Yes — a new `marubeni` role** (§ 13.7) | So the Marubeni-side reviewer can see status and refresh the Remarks themselves. A real scope change — see the tension named in § 13.7. |
+| D5 | Two-way, or read-only? | **Read-only** (2026-09-09) | Decisive fact: the file is **Marubeni's**, shared to us read-only. Writing back needs them to grant Editor collaboration — and raises whether the audited party should be editing the auditor's control document at all. Dropping it removed every remaining blocker at once (see § 13.9). |
+| D6 | How does the file reach ITGR? | **Uploaded by hand** | With no write-back, an API fetch buys only "nobody has to click upload" — and would cost an OAuth flow, stored tokens, refresh handling, and a dependency on Marubeni's link permissions. Not worth it for a file that changes rarely. |
 
 ### 13.3 Goals
 
 | # | Goal |
 |---|---|
-| G1 | The shared checklist workbook's Remarks-column cells and ITGR's per-item Remark stay in sync in both directions, without anyone re-typing anything |
-| G2 | Someone editing the workbook directly in Box (not logged into ITGR) can see the item's current status reflected there, without being handed a dashboard link |
-| G3 | Neither direction of sync can ever become a backdoor around the approval workflow (§ D2 above) |
-| G4 | A push can never destroy a human-authored note already in the cell (§ D4 above) |
+| G1 | What a reviewer writes in the workbook's Remarks column shows up per item in the dashboard, without anyone re-typing it |
+| G2 | The import can never become a backdoor around the approval workflow (D3) |
+| G3 | Nothing is ever written back to Marubeni's file, by any code path |
+| G4 | No credentials, no third-party app authorization, nothing to expire or rotate |
 
-### 13.4 How the sync actually works (tested, not just designed)
+### 13.4 How it works
 
-Reading and writing one cell in an `.xlsx` file needs real spreadsheet parsing — this isn't a REST call away like the External API (§ 12). `lib/boxSync.js` uses `exceljs` (Node) for this, and both the read and write paths are implemented and tested against the real `source/Marubeni_Group_IT_Governance_Rules_Checklist_English.xlsx`:
+`lib/checklistRemarks.js` (using `exceljs`) parses an uploaded workbook; `POST /api/import-remarks` applies it. Verified against the real `source/Marubeni_Group_IT_Governance_Rules_Checklist_English.xlsx`:
 
-- **Column lookup is dynamic, never a hardcoded letter.** `findRemarksColumn()` scans header row 8 for text matching `/remarks column/i` and uses whatever column that resolves to (T in the current FY2026 layout). This matches `scripts/extract-xlsx.py`'s own defensive posture — the layout has held across at least two FY workbooks, but nothing here assumes it will forever.
-- **Row matching is by item number** (column A, from row 10 down — same `FIRST_DATA_ROW` `scripts/extract-xlsx.py` uses), not by row position, so reordered rows don't silently misattribute a remark.
-- **Pull** (`parseChecklistRemarks(buffer)`): reads every row's Remarks-column cell into a `Map<itemNo, text>` in one pass over one downloaded file — verified against the real workbook: 96/96 items parsed correctly, including rich-text-formatted header/cell values (a real gotcha — a naive `String(cell.value)` on a rich-text cell yields `"[object Object]"`, not the text).
-- **Push** (`writeChecklistRemark(buffer, itemNo, text)`): locates the item's row, **appends** `\n[ITGR] <text>` to whatever's already in the cell (decision D4), and returns a new workbook buffer. Verified round-trip: written cell updates correctly, the adjacent row and an unrelated column in the same row are untouched.
-- **What's still a stub:** `downloadChecklistFile()`/`uploadChecklistFile()` — the actual Box HTTP calls (resolve the shared link, fetch/replace file content). Both throw a clear "not connected" error until a Box Custom App exists (§ 13.6). Everything above them is real, working code with nothing left to build except that connection.
+- **The column is located by header text**, never a fixed letter — `findRemarksColumn()` scans header row 8 for `/remarks column/i`. Matches `scripts/extract-xlsx.py`'s own caution about the layout drifting between FY workbooks.
+- **Rows are matched by item number** (column A, from row 10 — the same `FIRST_DATA_ROW`), not by position, so a reordered sheet can't silently misattribute a remark.
+- **Rich-text cells are flattened properly.** A naive `String(cell.value)` on a styled cell yields `"[object Object]"` — a real trap, since it fails silently and looks like data.
+- **Only changed rows are written**, so `box_remark_at` means "when this text last changed", not "when someone last ran an import".
+- **Rows in the file that aren't known items are reported back**, not silently dropped.
+- A non-workbook upload fails with a clear message, and the failure is logged to `remark_import_log` like any other run.
 
-### 13.5 Data Model Additions
+### 13.5 Data Model
 
-See § 7 "v1.9 additions" for the full column list. In short: a new singleton table `box_checklist_source` (the one system-wide workbook link — not a per-item column), `item_status.box_remark`/`box_remark_by`/`box_remark_at`/`box_remark_source` (the live-synced Remark per item, kept separate from `self_assessment_note`'s frozen one-time import even though both trace back to the same underlying spreadsheet column), and an append-only `box_sync_log` table mirroring `api_request_log`'s role — every pull/push attempt, successful or not, is auditable after the fact (same principle as § Goal 4 and § 12.4).
+See § 7 "v1.9 additions". In short: `box_checklist_source` (a bookmark to where the file lives), `item_status.box_remark`/`.box_remark_at` (the mirrored cell), and `remark_import_log` (one row per import run).
 
-### 13.6 Authentication & Sync Mechanics
+### 13.6 Functional Requirements
 
-- **Box auth:** a single service-level connection for the whole system, not per-user OAuth — a Box Custom App using Client Credentials Grant / a service account, configured once via Vercel env vars (`BOX_CLIENT_ID`, `BOX_CLIENT_SECRET`, `BOX_ENTERPRISE_ID`), following the same pattern already used for `API_TOKEN_PEPPER`/`PIN_PEPPER`/`SUPABASE_SERVICE_ROLE_KEY`. **Requires a Box enterprise admin to authorize the Custom App before any of this works** — an external dependency outside this codebase, same class as "a Supabase project must be provisioned" (§ 10). Flagged as blocking in § 9.
-- **Pull:** a scheduled Vercel Cron job (proposed every 15–30 min, § 9) downloads the one configured workbook once, runs `parseChecklistRemarks()` (§ 13.4), and updates every item's `box_remark` in a single pass — cheaper than the old per-item-folder design's N-files-per-item scan, since there's only ever one file to fetch.
-- **Push:** triggered by the same points that already write `item_workflow_events`/`audit_log` today (submit / review / approve / reopen), or manually via `POST /api/items/:no/box-sync` (§ 13.7) — downloads the workbook, runs `writeChecklistRemark()` (§ 13.4) to append the current status, re-uploads it as a new file version.
-- **Concurrency risk, named not solved:** download → modify → re-upload has an obvious race if someone edits the workbook in Box between the download and the upload — a naive re-upload could clobber their concurrent edit. Box's upload API can take an expected-version/etag-style precondition to detect this; using it (and deciding what to do on a conflict — retry? surface an error to the triggering user?) is unbuilt, flagged in § 13.10.
-- **No loop-prevention mechanism needed** (unlike the original Comments-API draft's `[ITGR]`-tag skip logic) — reading a plain cell value has no concept of "who wrote this," so there's nothing to distinguish and nothing that can loop. The `[ITGR]` tag on push (D4) is purely for human readability, not machine deduplication.
+- An **import card on the Tracker tab**, visible to `marubeni`/`admin` only: a link through to the workbook in Box, a file picker, and a result line reporting items updated / unchanged / unknown. It lives on Tracker rather than Admin because `marubeni` is the role that runs it and cannot see the Admin tab.
+- An **Admin card** holding the Box link itself (`box_checklist_source`) — readable by `marubeni`/`admin`, writable by `admin`.
+- A **"Remark from the checklist workbook"** panel on each expanded item: read-only for everyone, visually distinct from the sanctioned Evidence/note field and from the v1.7 self-assessment panel, so nobody mistakes it for an approved compliance statement.
+- Every import writes a `remark_import_log` row, success or failure — the same "every automated action is auditable" posture as `audit_log` and `api_request_log`.
+- All of it degrades gracefully if the migration hasn't run: reads fall back a tier (the v1.7 pattern) and the import returns a clean `501` naming the missing migration.
 
-### 13.7 The `marubeni` Role (Decision D3)
+### 13.7 The `marubeni` Role
 
-`marubeni` is a **new value in the `users.role` check constraint** — a sixth role alongside `admin`/`user`/`reviewer`/`approver`/`read_only` (§ 4a). It represents an external Marubeni-side reviewer, and is deliberately **not** part of the internal preparer → reviewer → approver chain:
+A sixth value in the `users.role` check constraint, alongside `admin`/`user`/`reviewer`/`approver`/`read_only` (§ 4a). It represents an external Marubeni-side reviewer and is deliberately **not** part of the internal preparer → reviewer → approver chain:
 
 | Capability | `marubeni` | Why |
 |---|---|---|
 | View all tabs | ✅ | Same baseline as `read_only` |
-| Edit Owner / Evidence / ClickUp / trigger workflow actions | ❌ | Not part of AutoCorp's internal workflow (§ 4a) — same restriction as `read_only` |
-| View workflow history / internal reviewer comments (`item_workflow_events`) | ❌ by default | Mirrors the External API's D3 decision (§ 12.7): internal review comments can discuss unresolved issues plainly and name people — a role outside the internal chain shouldn't see that by default. Revisit if the actual need turns out broader. |
-| Write the Remark field in-app | ✅ *(new)* | The whole point of the role — an in-app alternative to leaving a Box comment, for whoever is "the person who supplies the Remark" |
-| Trigger "Sync to Box" manually | ✅ *(new)* | Push current status + remark to Box immediately, instead of waiting for a status-change trigger or the next poll cycle |
+| Edit Owner / Evidence / ClickUp / trigger workflow actions | ❌ | Not part of AutoCorp's internal workflow (§ 4a) |
+| View workflow history / internal reviewer comments | ❌ by default | Mirrors the External API's D3 decision (§ 12.7): internal review comments name people and discuss unresolved issues plainly |
+| Run the Remark import | ✅ | The role's one action |
 
-**A tension worth naming, not silently resolving:** this PRD's original Non-Goals (§ 3) frame ITGR as "an internal tool for a small, known set of COE&S/ATC staff, not a public-facing product," and the External API's own Non-Goals (§ 12.3) explicitly parked "direct access for Marubeni or other external parties" pending "per-token category scoping, mandatory expiry, and a data-use agreement that don't exist yet." Introducing a real `marubeni` login is exactly that access — a deliberate scope change, not a natural extension of `read_only`. It also happens to be what § 11's Recommendation 8 ("a distinct read-only external auditor experience") was anticipating. Flagging this explicitly rather than adding the role as if it were routine — worth an explicit go-ahead before real Marubeni accounts are issued, same as any other access-control decision in this document.
+**A tension worth naming, not silently resolving:** § 3 frames ITGR as "an internal tool for a small, known set of COE&S/ATC staff, not a public-facing product," and § 12.3 parked "direct access for Marubeni or other external parties" pending a data-use agreement that doesn't exist yet. A real `marubeni` login is exactly that access — a deliberate scope change, not a natural extension of `read_only`. It is also what § 11's Recommendation 8 anticipated. Worth an explicit go-ahead before any real account is issued (§ 9).
 
-**Data model:** `item_status.box_remark_source` (text, `'box'` \| `'app'`) records whether a given `box_remark` came from the workbook (pulled) or was typed in-app by a `marubeni`/`admin` user — keeping provenance visible is the same instinct behind keeping `self_assessment_note` separate from workflow notes (v1.7). A workbook cell carries no author metadata, so `box_remark_by` stays blank when `box_remark_source='box'`.
+### 13.8 Non-Goals
 
-**Endpoints (built, inert until Box is connected):** `PATCH /api/items/:no/box-remark` (role: `marubeni`, `admin`) — write an in-app Remark, sets `box_remark_source='app'`. `POST /api/items/:no/box-sync` (role: `marubeni`, `admin`) — push the current status + remark into the shared workbook's cell for this item immediately; writes a `box_sync_log` row same as the automatic push (§ 13.6), with `triggered_by` recorded. Both return a clean `501` right now (§ 13.4's stub) rather than a `500`, verified live against production.
-
-**Open question this role raises specifically:** who are the real Marubeni-side people who'd get one of these accounts, and who at AutoCorp is authorized to issue PIN logins to an external party — this is a policy question, not an engineering one, and sits above (not instead of) the existing "who holds initial admin access" open question (§ 9).
-
-### 13.8 Functional Requirements
-
-- **Admin tab** gets a **Box Checklist Workbook** card: one URL field for the single shared workbook link (`box_checklist_source`), readable by `marubeni`/`admin`, writable by `admin` only. There is deliberately **no per-item Box field** on the Tracker — one workbook, one setting (D1).
-- A **"Remark from Box"** panel on each expanded Tracker item, clearly visually distinct from the sanctioned Evidence/note field and from the v1.7 self-assessment panel, showing `box_remark`, `box_remark_by`, `box_remark_at`, `box_remark_source` — labeled plainly enough that nobody mistakes it for an approved compliance statement. Read-only for everyone except `marubeni`/`admin` (§ 13.7), who get an edit control, a "Sync to Box" button, and a link straight to the workbook in Box.
-- Pull and push both write to `box_sync_log` on every attempt (success or failure, automatic or manually triggered), extending this project's consistent "every automated action is auditable" principle (§ Goal 4, § 12.4, § 13.5).
-- Everything above degrades gracefully before the v1.9 migration runs: the reads fall back a tier (same pattern as v1.7's self-assessment columns), and every write path returns a clean `501` naming the missing migration rather than a `500`. Verified live against production.
-
-### 13.9 Non-Goals
-
-| Not doing (v1.9 proposal) | Why |
+| Not doing | Why |
 |---|---|
-| Writing `status`/`workflow_state` from a synced Remark | D2 (§ 13.2) — would bypass the approval workflow's segregation of duties |
-| Overwriting the Remarks cell on push | D4 (§ 13.2) — append only; a human's existing note in that cell is never deleted by ITGR |
-| Real-time sync via Box Webhooks | Would need a public endpoint + signature verification + webhook registration — more infra than a v1 needs; scheduled polling is simpler and sufficient for an informational remark. Candidate for later if 15–30 min latency proves too slow. |
-| Reading/writing any workbook column other than the Remarks Column | The Check Column (self-assessment 〇/×/−) stays a deliberate one-time import (v1.7), not a live sync target — it feeds the official Marubeni score, and quietly moving it under a live sync would change what that number means |
-| Syncing a full edit history of the cell | Only the current cell value is mirrored — `box_sync_log` records ITGR's own attempts, not a reconstruction of everyone's spreadsheet edits |
-| Attaching or downloading Box files into ITGR's evidence storage | Out of scope — unrelated to the existing Supabase Storage evidence flow (v1.3) |
+| Writing anything back to Marubeni's workbook | D5 — we hold a read-only shared link, and the audited party editing the auditor's control document is a governance question nobody asked for |
+| Any Box API integration, Box Custom App, or stored Box credentials | D6 — with no write-back, an automated fetch isn't worth an OAuth flow and a token to rotate |
+| Writing `status`/`workflow_state` from an imported Remark | D3 — would bypass the approval workflow's segregation of duties |
+| Editing the Remark inside ITGR | It would be overwritten by the next import, and would create a second version of the truth against a file we don't own |
+| Importing any column other than the Remarks Column | The Check Column (self-assessment 〇/×/−) stays a seed-time import: it feeds the official Marubeni score, and moving it under a routine import would change what that number means |
+
+### 13.9 What Dropping the Write-Back Removed
+
+Recorded because it is the clearest example in this project of scope reduction being the engineering win. Going one-way retired, in one decision: the Box Custom App and its enterprise admin authorization; asking Marubeni for Editor collaboration; storing and rotating Box credentials; the download → modify → re-upload race that could clobber someone's concurrent edit; the append-vs-overwrite question about a cell holding someone else's text; and the governance question of an audited party writing into the auditor's file. **Every open blocker on this feature was closed by removing a capability, not by building one.**
 
 ### 13.10 Open Questions
 
-See § 9 for the full list (tagged `(v1.9, proposed)`). The two genuinely blocking items before the Box connection can be finished are naming who can authorize a Box Custom App on the Box enterprise side, and confirming the `marubeni` external-access decision (§ 13.7) with whoever owns AutoCorp/Marubeni's data-access policy. Two design questions specific to this corrected mechanism are also open:
-
-- **Concurrent-edit safety on push** (§ 13.6) — download → modify → re-upload can clobber someone's simultaneous edit in Box. Needs a version precondition on upload plus a decision about what happens on conflict, before push is switched on for real.
-- **Two remarks tracing to one cell** — `self_assessment_note` (frozen at import, feeds nothing but display) and `box_remark` (live-synced) both originate from the same Remarks Column. That's deliberate (§ 13.5), but worth confirming it reads clearly to an actual auditor rather than looking like the same field shown twice with different values.
+See § 9 (tagged `(v1.9)`). The one blocking item left is not technical: confirming the `marubeni` external-access decision (§ 13.7) with whoever owns AutoCorp/Marubeni's data-access policy, before a real account is issued.

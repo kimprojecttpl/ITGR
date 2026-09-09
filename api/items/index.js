@@ -7,10 +7,10 @@ const STATUS_COLS = "status, owner, note, clickup_url, workflow_state, updated_a
 // Supabase migrations independently, and a hard failure here would take the
 // whole dashboard down for every role until the SQL ran.
 const STATUS_COLS_V17 = `${STATUS_COLS}, self_assessment, self_assessment_note`;
-// v1.9 (proposed) — Box.com Remark Sync columns. Same reasoning, one more
-// tier. No box_url here — the Box link is a single system-wide setting
-// (box_checklist_source), not a per-item column; see api/admin/box-config.js.
-const STATUS_COLS_V19 = `${STATUS_COLS_V17}, box_remark, box_remark_by, box_remark_at, box_remark_source`;
+// v1.9 — the Remark imported from the checklist workbook. Same reasoning,
+// one more tier. Read-only in the app: only POST /api/import-remarks writes
+// it, so there is no author to record.
+const STATUS_COLS_V19 = `${STATUS_COLS_V17}, box_remark, box_remark_at`;
 const UNDEFINED_COLUMN = "42703";
 
 async function loadItems(supabase) {
@@ -81,11 +81,9 @@ export default async function handler(req, res) {
       workflowState: status?.workflow_state ?? "Not Started",
       selfAssessment: status?.self_assessment ?? "",
       selfAssessmentNote: status?.self_assessment_note ?? "",
-      // v1.9 (proposed)
+      // v1.9
       boxRemark: status?.box_remark ?? "",
-      boxRemarkBy: status?.box_remark_by ?? "",
       boxRemarkAt: status?.box_remark_at ?? "",
-      boxRemarkSource: status?.box_remark_source ?? "",
     };
   });
 

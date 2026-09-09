@@ -348,41 +348,44 @@ alter table item_status add constraint item_status_self_assessment_check
 alter table item_status add column if not exists self_assessment_note text not null default '';
 
 -- =============================================================================
--- v1.9 (PROPOSED — not a real Box connection yet): Box.com Remark Sync +
--- the `marubeni` role. See PRD.md § 13 for the full spec and § 13.7 for the
--- role. Safe to re-run.
+-- v1.9: Remark import from the Marubeni ITGR checklist workbook + the
+-- `marubeni` role. See PRD.md § 13. Safe to re-run.
 --
--- Corrected design (2026-09-09, stakeholder): this is NOT the Box Comments
--- API. It's the content of one cell per row — the "Remarks Column (Reasons
--- for the Check Results, etc.)" already read once, offline, by
--- scripts/extract-xlsx.py into self_assessment_note — read/written live in
--- the single master checklist workbook shared on Box. There is exactly one
--- Box file for the whole system, not one per item (an earlier draft of this
--- migration wrongly modeled it as a per-item folder link; that version was
--- never applied to production and is fully replaced here, not layered on).
+-- Scope settled 2026-09-09 after two corrections. The workbook lives in
+-- MARUBENI's Box and reaches AutoCorp as a shared link, which grants read
+-- access but not the Editor collaboration a write-back would require — so
+-- this is a ONE-WAY import: the workbook's "Remarks Column" (the same
+-- column scripts/extract-xlsx.py reads at seed time) is mirrored into the
+-- dashboard, and nothing is ever written back to Marubeni's file. The
+-- workbook is uploaded by hand, so there is no Box API, no Box Custom App,
+-- no admin authorization and no stored credentials anywhere in this feature.
 --
--- This migration only adds columns/tables/roles the *application* can use
--- once a real Box Custom App exists (PRD.md § 13.6, § 9 — still an open,
--- blocking dependency outside this codebase). Running this SQL does not by
--- itself connect anything to Box.
+-- History, because it matters for what this block does: an earlier draft of
+-- this migration (single workbook, but still two-way) WAS applied to
+-- production on 2026-09-09, creating box_remark/box_remark_at plus
+-- box_remark_by, box_remark_source, box_checklist_source and box_sync_log.
+-- The first draft (per-item Box folders) was never applied — box_url and
+-- friends do not exist. So this block is additive over what is already
+-- there, and the columns the one-way design no longer needs are dropped in
+-- a clearly separated, optional section at the end.
 -- =============================================================================
 
 -- ---------------------------------------------------------------------------
 -- New role: `marubeni`. Not part of the internal preparer -> reviewer ->
--- approver chain (§ 4a) — represents an external Marubeni-side reviewer who
--- can view the dashboard, write the Remark in-app, and trigger a manual
--- Box sync. See PRD.md § 13.7 for the real scope-change tension this raises
--- against this project's original "internal tool only" framing — get an
--- explicit go-ahead before issuing a real `marubeni` account.
+-- approver chain (§ 4a) — an external Marubeni-side reviewer who can view
+-- the dashboard and run the Remark import. See PRD.md § 13.7 for the real
+-- scope-change tension this raises against this project's original
+-- "internal tool only" framing — get an explicit go-ahead before issuing a
+-- real `marubeni` account.
 -- ---------------------------------------------------------------------------
 alter table users drop constraint if exists users_role_check;
 alter table users add constraint users_role_check
   check (role in ('admin', 'user', 'reviewer', 'approver', 'read_only', 'marubeni'));
 
 -- ---------------------------------------------------------------------------
--- box_checklist_source: a SINGLE, system-wide Box link to the master
--- checklist workbook (there is only one workbook, not one per item — see
--- the note above). Enforced as a singleton via the `id = 1` check.
+-- box_checklist_source: a bookmark, not a connection. Holds the Box shared
+-- link to the master checklist workbook so whoever runs the import knows
+-- where to download the current copy from. Singleton via the `id = 1` check.
 -- ---------------------------------------------------------------------------
 create table if not exists box_checklist_source (
   id         int primary key default 1 check (id = 1),
@@ -393,41 +396,49 @@ create table if not exists box_checklist_source (
 insert into box_checklist_source (id) values (1) on conflict (id) do nothing;
 
 -- ---------------------------------------------------------------------------
--- item_status: the synced/authored Remark, per item. Deliberately separate
--- from `status`/`workflow_state` (never written by the Box sync — decision
--- D2, PRD.md § 13.2) and from `self_assessment_note` (a frozen snapshot of
--- the FY2026 workbook import — this is the live-synced counterpart of the
--- same underlying Remarks-column cell, not the same field).
+-- item_status: the imported Remark, per item. A read-only mirror of the
+-- workbook cell — nothing in the app writes it except the import, so there
+-- is no "who typed this" to record (a spreadsheet cell carries no author).
+--
+-- Deliberately NOT self_assessment_note, even though both trace back to the
+-- same spreadsheet column: that one is frozen at seed time and feeds the
+-- official Marubeni score, while this one is refreshed on every import.
+-- Collapsing them would quietly change what the score means.
 -- ---------------------------------------------------------------------------
-alter table item_status add column if not exists box_remark        text not null default '';
-alter table item_status add column if not exists box_remark_by     text not null default ''; -- blank when box_remark_source='box' — a spreadsheet cell has no author metadata
-alter table item_status add column if not exists box_remark_at     timestamptz;
-alter table item_status add column if not exists box_remark_source text; -- 'box' | 'app', null until first remark
-alter table item_status drop constraint if exists item_status_box_remark_source_check;
-alter table item_status add constraint item_status_box_remark_source_check
-  check (box_remark_source is null or box_remark_source in ('box', 'app'));
+alter table item_status add column if not exists box_remark    text not null default '';
+alter table item_status add column if not exists box_remark_at timestamptz;
 
 -- ---------------------------------------------------------------------------
--- box_sync_log: append-only audit trail for every pull/push attempt,
--- automatic or manually triggered — mirrors api_request_log's role (v1.6).
--- `triggered_by` is set only for a manual "Sync to Box" (marubeni/admin);
--- null for the automatic push-on-status-change and the scheduled pull.
--- `item_no` is nullable because a `pull` refreshes every item from one
--- workbook download in a single pass — not naturally one row per item.
+-- remark_import_log: append-only, one row per import run (not per item) —
+-- the same "every automated action is auditable" posture as audit_log and
+-- api_request_log.
 -- ---------------------------------------------------------------------------
-create table if not exists box_sync_log (
-  id           bigint generated always as identity primary key,
-  item_no      int references checklist_items (no) on delete cascade,
-  direction    text not null check (direction in ('pull', 'push')),
-  remark_text  text,
-  success      boolean not null,
-  error        text,
-  triggered_by uuid references users (id) on delete set null,
-  created_at   timestamptz not null default now()
+create table if not exists remark_import_log (
+  id            bigint generated always as identity primary key,
+  file_name     text,
+  items_updated int,
+  success       boolean not null,
+  error         text,
+  imported_by   uuid references users (id) on delete set null,
+  created_at    timestamptz not null default now()
 );
 
-create index if not exists box_sync_log_item_no_idx on box_sync_log (item_no, created_at desc);
+create index if not exists remark_import_log_created_idx on remark_import_log (created_at desc);
 
 alter table box_checklist_source enable row level security;
-alter table box_sync_log         enable row level security;
+alter table remark_import_log    enable row level security;
 -- Same default-deny posture as every other table — service role (BFF) only.
+
+-- ---------------------------------------------------------------------------
+-- OPTIONAL CLEANUP — safe, but destructive, so it is kept separate and you
+-- can skip it. These were created by the earlier two-way draft and are now
+-- unused: `box_remark_by` and `box_remark_source` had no author to record
+-- once the Remark became a read-only mirror of a spreadsheet cell, and
+-- `box_sync_log` was replaced by `remark_import_log` (one row per import
+-- run rather than per item). Verified empty in production on 2026-09-09
+-- (0 rows set / 0 rows) before this was written.
+-- ---------------------------------------------------------------------------
+-- alter table item_status drop constraint if exists item_status_box_remark_source_check;
+-- alter table item_status drop column if exists box_remark_by;
+-- alter table item_status drop column if exists box_remark_source;
+-- drop table if exists box_sync_log;
