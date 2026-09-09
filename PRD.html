@@ -62,7 +62,7 @@
       <a class="navlink" href="#f-lang">6. TH/EN Toggle</a>
       <a class="navlink" href="#f-fy2026">7. FY2026 Alignment</a>
       <a class="navlink" href="#f-api">8. External Read API</a>
-      <a class="navlink" href="#f-box">9. Box.com Remark Sync <span class="text-amber-500">(v1.9)</span></a>
+      <a class="navlink" href="#f-box">9. นำเข้า Remark จากไฟล์ checklist</a>
 
       <div class="navgroup">รายละเอียดทางเทคนิค</div>
       <a class="navlink" href="#data-model">Data Model</a>
@@ -83,7 +83,7 @@
           <span class="px-2.5 py-1 rounded-full bg-green-100 text-green-700 font-medium">✓ v1.0–v1.8 shipped</span>
           <span class="px-2.5 py-1 rounded-full bg-green-100 text-green-700 font-medium">✓ ไม่มี deploy gate ค้าง</span>
           <span class="px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 font-medium">Owner: COE&amp;S — AutoCorp (ATC)</span>
-          <span class="px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 font-medium">📦 v1.9 Box.com Remark Sync — สร้างแล้วบางส่วน ยังไม่ต่อ Box จริง</span>
+          <span class="px-2.5 py-1 rounded-full bg-green-100 text-green-700 font-medium">✓ v1.9 นำเข้า Remark จากไฟล์ checklist — shipped</span>
         </div>
         <p class="text-sm text-slate-600 leading-relaxed mb-3">
           ITGR Dashboard เป็นระบบติดตามการปฏิบัติตาม <b>Marubeni Group IT Governance Rules (ITGR) Checklist</b> (96 ข้อกำหนด, 8 หมวด) ของ AutoCorp — เดิมเป็นไฟล์ HTML เดี่ยวที่เก็บสถานะไว้ใน <code class="bg-slate-100 px-1 rounded text-xs">localStorage</code> ของเบราว์เซอร์ (ข้อมูลไม่แชร์กัน ไม่มี audit trail ไม่มีการควบคุมสิทธิ์) — ปัจจุบันย้ายเป็นระบบหลายผู้ใช้เต็มรูปแบบบน <b>Supabase + Vercel serverless BFF</b> พร้อม PIN login, RBAC, workflow อนุมัติแบบแบ่งแยกหน้าที่ (User → Reviewer → Approver), และ API สำหรับระบบภายนอก
@@ -111,7 +111,7 @@
             <tr><td class="px-3 py-2 font-mono font-bold">1.6</td><td class="px-3 py-2 text-slate-400">2026-08-27</td><td class="px-3 py-2">External Read API (<code class="bg-slate-100 px-1 rounded">/api/v1/*</code>) — bearer token, อ่านอย่างเดียว, scoped, rate-limited, มี audit log</td></tr>
             <tr><td class="px-3 py-2 font-mono font-bold">1.7</td><td class="px-3 py-2 text-slate-400">2026-09-03</td><td class="px-3 py-2">FY2026 alignment — รีเฟรชข้อมูลจาก workbook ใหม่, คืนสถานะ "Not Applicable", เพิ่ม self-assessment + Marubeni Official Score</td></tr>
             <tr><td class="px-3 py-2 font-mono font-bold">1.7b</td><td class="px-3 py-2 text-slate-400">2026-09-08</td><td class="px-3 py-2">self_assessment บน External Read API (ปิดช่องว่างที่ v1.7 ยังไม่ครอบคลุม API ภายนอก)</td></tr>
-            <tr class="bg-amber-50/50"><td class="px-3 py-2 font-mono font-bold text-amber-700">1.9</td><td class="px-3 py-2 text-slate-400">2026-09-08 (ร่าง)<br>2026-09-09 (แก้แบบ + สร้างบางส่วน)</td><td class="px-3 py-2"><b class="text-amber-700">ยังไม่ต่อ Box จริง</b> · Box.com Remark Sync — ลิงก์ไฟล์ Excel checklist ไฟล์เดียวทั้งระบบ อ่าน/เขียนเซลล์คอลัมน์ "Remarks Column" ของแต่ละข้อเป็น Remark (ไม่แตะ status จริง) + เพิ่ม role <code class="bg-white px-1 rounded">marubeni</code> · <b>ฉบับ 8 ก.ย. เข้าใจผิดว่าเป็น comment ของ Box — แก้แล้ว 9 ก.ย. (ยังไม่เคยขึ้น production)</b></td></tr>
+            <tr class="bg-amber-50/50"><td class="px-3 py-2 font-mono font-bold text-amber-700">1.9</td><td class="px-3 py-2 text-slate-400">2026-09-08 (ร่าง)<br>2026-09-09 (แก้แบบ + สร้างบางส่วน)</td><td class="px-3 py-2"><b class="text-amber-700">ยังไม่ต่อ Box จริง</b> · Box.com Remark Sync — ลิงก์ไฟล์ Excel checklist ไฟล์เดียวทั้งระบบ อ่าน/เขียนเซลล์คอลัมน์ "Remarks Column" ของแต่ละข้อเป็น Remark (ไม่แตะ status จริง) + เพิ่ม role <code class="bg-white px-1 rounded">marubeni</code> · <b>ผ่านการแก้แบบ 2 รอบก่อนได้ข้อสรุป — ดูกล่องแดงใน § 9</b></td></tr>
           </tbody>
         </table>
       </div>
@@ -355,45 +355,43 @@
     <section id="f-box" class="anchor-offset">
       <div class="flex items-center gap-2 mb-3">
         <span class="text-2xl">📦</span>
-        <h2 class="text-xl font-bold text-blue-800">9. Box.com Remark Sync</h2>
-        <span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-bold">v1.9 · สร้างบางส่วน — ยังไม่ต่อ Box จริง</span>
-      </div>
-      <div class="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-800 mb-3">
-        📝 <b>สถานะ:</b> role, endpoint, หน้าจอ, SQL migration และตรรกะอ่าน/เขียนไฟล์ Excel <b>สร้างและทดสอบแล้ว</b> — เหลือแค่การเชื่อมต่อ Box จริง (ต้องมี Box Custom App ก่อน) และยังไม่ได้รัน migration บน production
+        <h2 class="text-xl font-bold text-blue-800">9. นำเข้า Remark จากไฟล์ checklist</h2>
+        <span class="text-[10px] px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-bold">v1.9 · shipped</span>
       </div>
       <div class="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs text-red-800 mb-3">
-        🔄 <b>แก้แบบใหม่ 2026-09-09:</b> ฉบับร่างแรก (8 ก.ย.) เข้าใจผิดว่าเป็น <b>comment ของ Box</b> บนไฟล์ในโฟลเดอร์ต่อข้อ — จริง ๆ แล้วคือ <b>เนื้อหาในเซลล์ของคอลัมน์ "Remarks Column" ในไฟล์ Excel checklist ไฟล์เดียว</b> ที่แชร์บน Box (คอลัมน์ T — คอลัมน์เดียวกับที่ <code class="bg-white/60 px-1 rounded">scripts/extract-xlsx.py</code> อ่านเข้ามาเป็น self_assessment_note อยู่แล้ว) · แบบเก่ายังไม่เคยขึ้น production จึงแทนที่ทั้งหมด ไม่ได้ต่อยอด
+        🔄 <b>แก้แบบ 2 รอบกว่าจะได้ข้อสรุป — และทั้ง 2 รอบคือการ "ตัดออก" ไม่ใช่ "เพิ่ม":</b>
+        <br>① ฉบับ 8 ก.ย. เข้าใจผิดว่าเป็น <b>comment ของ Box</b> บนโฟลเดอร์ต่อข้อ — จริง ๆ คือ <b>เนื้อหาในเซลล์</b> คอลัมน์ "Remarks Column" ของไฟล์เดียว
+        <br>② ฉบับ 9 ก.ย. เช้า แก้ถูกแล้วแต่ยังออกแบบให้เขียนกลับได้ (ฉบับนี้รัน migration ขึ้น production ไปแล้ว — คอลัมน์ที่ไม่ใช้แล้วมีสคริปต์ลบให้เลือกรันท้าย <code class="bg-white/60 px-1 rounded">schema.sql</code>)
+        <br>③ ฉบับสุดท้าย: <b>ทางเดียว อ่านอย่างเดียว</b> เพราะไฟล์เป็นของ Marubeni เราได้แค่ลิงก์อ่าน
       </div>
       <div class="bg-white rounded-xl border border-slate-200 p-5 text-sm text-slate-600 leading-relaxed space-y-3">
-        <p>วัตถุประสงค์: ตั้งค่าลิงก์ไฟล์ Excel checklist <b>ไฟล์เดียวทั้งระบบ</b> — <b>ดึง</b> ข้อความในเซลล์คอลัมน์ Remark ของแต่ละแถว (จับคู่ตามเลขข้อ) เข้ามาแสดงใน ITGR โดยไม่ต้องพิมพ์ซ้ำ และ <b>ส่ง</b> สถานะปัจจุบันกลับไปต่อท้ายในเซลล์เดิม เพื่อให้คนที่ทำงานอยู่ในไฟล์ Excel บน Box เห็นสถานะได้โดยไม่ต้อง login เข้าแดชบอร์ด</p>
+        <p>ไฟล์ checklist ของ Marubeni มีคอลัมน์ <b>"Remarks Column"</b> (คอลัมน์ T) ที่เขียนเหตุผลของผลตรวจไว้รายข้อ — เดิมอ่านเข้าระบบครั้งเดียวตอน seed แล้วก็นิ่ง ทั้งที่ Marubeni ยังแก้ไฟล์ตัวจริงของเขาเรื่อย ๆ · v1.9 ทำให้ <b>อัปโหลดไฟล์ล่าสุดเข้ามา แล้ว Remark ทุกข้ออัปเดตตาม</b> โดยไม่ต้องพิมพ์ซ้ำ</p>
 
         <div class="bg-slate-50 border border-slate-200 rounded-lg p-3">
-          <p class="font-bold text-slate-700 text-xs mb-2">✅ ตัดสินใจแล้ว (stakeholder)</p>
+          <p class="font-bold text-slate-700 text-xs mb-2">✅ ตัดสินใจแล้ว</p>
           <ul class="list-disc pl-5 space-y-1.5 text-xs">
-            <li><b>D1 · ลิงก์เดียวทั้งระบบ ไม่ใช่ต่อข้อ</b> (แก้ 9 ก.ย.) — มี checklist workbook ไฟล์เดียวครอบทั้ง 96 ข้อ ตั้งค่าที่แท็บ Admin ที่เดียว</li>
-            <li><b>D1b · "comment" ที่ว่าคือค่าในเซลล์</b> ไม่ใช่ comment thread ของ Box — กลไกจริงคือ ดาวน์โหลดไฟล์ → อ่าน/เขียนเซลล์ตามเลขข้อ → อัปโหลดกลับเป็นเวอร์ชันใหม่</li>
-            <li><b>D2 · Remark ไม่แตะ status จริง</b> — เหมือนหลักการที่ใช้กับ self-assessment (v1.7): มีแค่ User → Reviewer → Approver เท่านั้นที่ตั้งค่าผลการตัดสิน compliance ได้ ไม่งั้นใครที่แก้ไฟล์ Excel ได้ก็จะ "อนุมัติ" ข้อได้โดยไม่ผ่าน workflow</li>
-            <li><b>D3 · เพิ่ม role ใหม่ <code class="bg-white/60 px-1 rounded">marubeni</code></b> — คนฝั่ง Marubeni ที่เป็นเจ้าของ Remark: เข้าแอปดูได้, เขียน Remark ในแอปได้เอง, และสั่ง "Sync to Box" ด้วยตัวเองได้ทันที</li>
-            <li><b>D4 · ส่งกลับแบบ "ต่อท้าย" เท่านั้น ห้ามเขียนทับ</b> (9 ก.ย.) — เซลล์นั้นอาจมีข้อความที่คนเขียนไว้จริงอยู่แล้ว ถ้าเขียนทับจะทำลายหลักฐานที่ไม่มีใครสั่งให้ลบ · ทดสอบแล้วว่าต่อท้ายบรรทัดใหม่ติด tag <code class="bg-white/60 px-1 rounded">[ITGR]</code> โดยข้อความเดิมและแถวอื่นไม่ถูกแตะ</li>
+            <li><b>D1-D2 · ไฟล์เดียวทั้งระบบ · "comment" = ค่าในเซลล์</b> ไม่ใช่ comment thread ของ Box (Box ไม่มี comment รายแถวอยู่แล้ว)</li>
+            <li><b>D3 · Remark ไม่แตะ status จริง</b> — เหมือนหลักการ self-assessment (v1.7): มีแค่ User → Reviewer → Approver ที่ตั้งผลตัดสินได้ ไฟล์ที่ใครก็แก้ได้ต้องไม่กลายเป็นทางลัดข้าม workflow</li>
+            <li><b>D4 · เพิ่ม role <code class="bg-white/60 px-1 rounded">marubeni</code></b> — คนฝั่ง Marubeni: ดูได้ + กดนำเข้า Remark ได้ แค่นั้น</li>
+            <li><b>D5 · ทางเดียว ไม่เขียนกลับ</b> — ไฟล์เป็นของ Marubeni เราได้ลิงก์อ่านอย่างเดียว ถ้าจะเขียนต้องให้เขาเชิญเป็น Editor และยังมีคำถามว่า <i>ผู้ถูกตรวจควรไปเขียนไฟล์ควบคุมของผู้ตรวจไหม</i></li>
+            <li><b>D6 · อัปโหลดเอง ไม่ต่อ API</b> — พอไม่เขียนกลับ การดึงอัตโนมัติเหลือประโยชน์แค่ "ไม่ต้องมีคนกด" แต่ต้องแลกกับ OAuth + เก็บ token + ต่ออายุ ไม่คุ้มกับไฟล์ที่นาน ๆ เปลี่ยนที</li>
           </ul>
         </div>
 
-        <div class="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-800">
-          ⚠️ <b>ประเด็นที่ต้องขอ go-ahead ก่อน ไม่ใช่แค่ทำเลย:</b> เดิม PRD นี้กำหนดไว้ตั้งแต่ § Non-Goals ว่า ITGR เป็น "เครื่องมือภายในทีมเล็กเท่านั้น" และ § External API เองก็เคยพักเรื่อง "ให้ Marubeni หรือคนนอกเข้าถึงตรง" ไว้เพราะยังไม่มี data-use agreement — role <code class="bg-white/60 px-1 rounded">marubeni</code> คือการเปิดสิทธิ์เข้าระบบจริงให้คนนอกเป็นครั้งแรก จึงควรได้รับการยืนยันจากเจ้าของนโยบายข้อมูลของ AutoCorp/Marubeni ก่อนออกบัญชีจริง ไม่ใช่แค่การตัดสินใจเชิงเทคนิค
-        </div>
-
         <div class="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 text-xs">
-          🧪 <b>ส่วนที่ทดสอบกับไฟล์จริงแล้ว</b> (<code class="bg-white/60 px-1 rounded">lib/boxSync.js</code>, ใช้ exceljs): หาคอลัมน์ Remark <b>จากข้อความหัวตาราง</b> ไม่ฮาร์ดโค้ดตัวอักษรคอลัมน์ · จับคู่แถวด้วยเลขข้อ ไม่ใช่ตำแหน่งแถว · อ่านครบ 96/96 ข้อจาก workbook จริง (รวมเซลล์แบบ rich text ที่ถ้าอ่านตรง ๆ จะได้ <code class="bg-white/60 px-1 rounded">[object Object]</code>) · เขียนต่อท้ายแล้ว round-trip กลับมาถูกต้อง แถวข้างเคียงและคอลัมน์อื่นไม่ถูกแตะ · <b>ที่ยังเป็น stub เหลือแค่ 2 ฟังก์ชัน</b> คือดาวน์โหลด/อัปโหลดไฟล์กับ Box
+          🧪 <b>ทดสอบกับไฟล์จริงแล้ว</b> (<code class="bg-white/60 px-1 rounded">lib/checklistRemarks.js</code> + exceljs): หาคอลัมน์<b>จากข้อความหัวตาราง</b> ไม่ฮาร์ดโค้ดตัวอักษร · จับคู่แถวด้วย<b>เลขข้อ</b> ไม่ใช่ตำแหน่งแถว · อ่านครบ 96/96 ข้อ (พบ 58 ข้อที่มีข้อความ) · เซลล์แบบ rich text แปลงถูกต้อง (ถ้าอ่านตรง ๆ จะได้ <code class="bg-white/60 px-1 rounded">[object Object]</code> แบบเงียบ ๆ) · เขียนเฉพาะแถวที่<b>เปลี่ยนจริง</b> เพื่อให้ "อัปเดตล่าสุด" มีความหมาย · ไฟล์ที่ไม่ใช่ workbook ขึ้น error ชัดเจนและถูกบันทึกลง log
         </div>
 
         <ul class="list-disc pl-5 space-y-1.5">
-          <li>การ์ดใหม่ในแท็บ Admin: <b>ไฟล์ Excel checklist บน Box</b> (<code class="bg-slate-100 px-1 rounded text-xs">box_checklist_source</code>) — ตั้งค่าลิงก์เดียวทั้งระบบ ไม่มีช่อง Box ต่อข้อในหน้า Tracker</li>
-          <li>Panel <b>"Remark จาก Box"</b> ในแต่ละข้อ แยกรูปแบบชัดเจนจาก Evidence/note จริงและจาก self-assessment panel — <code class="bg-slate-100 px-1 rounded text-xs">marubeni</code>/<code class="bg-slate-100 px-1 rounded text-xs">admin</code> แก้ได้ คนอื่นเห็นอย่างเดียว</li>
-          <li>ดึงข้อมูลด้วย Vercel Cron (เสนอ 15–30 นาที/ครั้ง) — ดาวน์โหลดไฟล์เดียวรอบเดียวแล้วอัปเดตครบทุกข้อ</li>
-          <li>ทุกครั้งที่ดึง/ส่งจะบันทึกลง <code class="bg-slate-100 px-1 rounded text-xs">box_sync_log</code> (append-only) — ตรวจสอบย้อนหลังได้เหมือน audit log อื่น ๆ ในระบบ</li>
-          <li><b>ยังไม่ได้แก้:</b> ถ้ามีคนแก้ไฟล์ Excel ใน Box พร้อมกับตอนที่ระบบกำลัง ดาวน์โหลด→แก้→อัปโหลด งานของเขาอาจถูกทับ — ต้องใส่การตรวจเวอร์ชันตอนอัปโหลดก่อนเปิดใช้ push จริง (blocking item ใน § คำถามค้าง)</li>
-          <li>ต้องมี Box admin ระดับ enterprise อนุมัติ Box Custom App ก่อนถึงจะเชื่อมได้จริง — เป็นขั้นตอนนอกเหนือโค้ด ยังไม่มีเจ้าของงานนี้ (blocking item ใน § คำถามค้าง)</li>
+          <li>การ์ด <b>นำเข้า Remark</b> อยู่บนแท็บ Tracker (ไม่ใช่ Admin เพราะ <code class="bg-slate-100 px-1 rounded text-xs">marubeni</code> เข้า Admin ไม่ได้) — เห็นเฉพาะ marubeni/admin · มีลิงก์ไปเปิดไฟล์ใน Box เพื่อโหลดตัวล่าสุด</li>
+          <li>Panel <b>"Remark จากไฟล์ checklist"</b> ในแต่ละข้อ — <b>อ่านอย่างเดียวสำหรับทุกคน</b> ไม่มีใครแก้ในแอปได้ จึงไม่มีข้อมูล 2 เวอร์ชันให้ขัดกัน</li>
+          <li>ทุกครั้งที่นำเข้าบันทึกลง <code class="bg-slate-100 px-1 rounded text-xs">remark_import_log</code> (1 แถวต่อ 1 ครั้ง) ทั้งสำเร็จและล้มเหลว</li>
+          <li>ถ้ายังไม่ได้รัน migration ระบบไม่พัง — อ่านจะ fallback ลงชั้นก่อนหน้า และการนำเข้าจะขึ้น <code class="bg-slate-100 px-1 rounded text-xs">501</code> พร้อมบอกว่าต้องรัน migration</li>
         </ul>
+
+        <div class="bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-xs text-green-800">
+          💡 <b>สิ่งที่ได้จากการ "ตัดขาเขียนกลับ" ออก:</b> blocker หายหมดในทีเดียว — ไม่ต้องมี Box Custom App, ไม่ต้องให้ Box admin อนุมัติ, ไม่ต้องขอ Marubeni เชิญเป็น Editor, ไม่ต้องเก็บ credential ที่ต้องต่ออายุ, ไม่มีความเสี่ยงเขียนทับงานคนอื่นตอนแก้ไฟล์พร้อมกัน และไม่ต้องตอบคำถามว่าผู้ถูกตรวจควรเขียนไฟล์ผู้ตรวจไหม
+        </div>
 
         <p class="text-xs text-slate-400 pt-1">สเปกเต็ม + ตารางการตัดสินใจ + non-goals: <code class="bg-slate-100 px-1 rounded">PRD.md § 13</code></p>
       </div>
@@ -417,10 +415,10 @@
               <tr><td class="py-1.5 font-mono align-top">audit_log</td><td class="py-1.5">user_id, item_no, field, old_value, new_value, created_at</td></tr>
               <tr><td class="py-1.5 font-mono align-top">api_tokens</td><td class="py-1.5">id, name, token_hash (unique), prefix, scopes (text[]), active, expires_at (nullable), last_used_at, created_by</td></tr>
               <tr><td class="py-1.5 font-mono align-top">api_request_log</td><td class="py-1.5">token_id (FK, on delete set null), path, query (jsonb), status, duration_ms, created_at — append-only, ใช้คำนวณ rate limit ด้วย</td></tr>
-              <tr class="bg-amber-50/40"><td class="py-1.5 font-mono align-top text-amber-700">box_checklist_source <span class="text-[10px]">(v1.9)</span></td><td class="py-1.5">singleton (id=1): box_url, updated_by, updated_at — ลิงก์ไฟล์ Excel checklist เดียวทั้งระบบ ไม่ใช่ต่อข้อ — <b>ยังไม่ได้รัน migration</b></td></tr>
-              <tr class="bg-amber-50/40"><td class="py-1.5 font-mono align-top text-amber-700">item_status <span class="text-[10px]">(v1.9)</span></td><td class="py-1.5">+ box_remark/box_remark_by/box_remark_at/box_remark_source ('box'|'app') — box_remark_by ว่างเสมอเมื่อดึงจากไฟล์ (เซลล์ Excel ไม่มีข้อมูลว่าใครพิมพ์) — <b>ยังไม่ได้รัน migration</b></td></tr>
-              <tr class="bg-amber-50/40"><td class="py-1.5 font-mono align-top text-amber-700">box_sync_log <span class="text-[10px]">(v1.9)</span></td><td class="py-1.5">item_no (nullable — 1 pull อัปเดตทุกข้อในรอบเดียว), direction (pull/push), remark_text, success, error, triggered_by (FK → users, เฉพาะ manual sync), created_at — append-only — <b>ยังไม่ได้รัน migration</b></td></tr>
-              <tr class="bg-amber-50/40"><td class="py-1.5 font-mono align-top text-amber-700">users.role <span class="text-[10px]">(v1.9)</span></td><td class="py-1.5">เพิ่มค่าที่ 6: <code class="bg-white px-1 rounded">marubeni</code> — บทบาทนอกสาย workflow ภายใน — <b>ยังไม่ได้รัน migration</b></td></tr>
+              <tr class="bg-green-50/40"><td class="py-1.5 font-mono align-top text-green-700">box_checklist_source <span class="text-[10px]">(v1.9)</span></td><td class="py-1.5">singleton (id=1): box_url — <b>บุ๊กมาร์ก</b>ว่าไฟล์อยู่ไหนใน Box เฉย ๆ ไม่มีโค้ดไหนเรียก Box</td></tr>
+              <tr class="bg-green-50/40"><td class="py-1.5 font-mono align-top text-green-700">item_status <span class="text-[10px]">(v1.9)</span></td><td class="py-1.5">+ box_remark, box_remark_at — กระจกสะท้อนเซลล์ในไฟล์ เขียนโดยการ import เท่านั้น</td></tr>
+              <tr class="bg-green-50/40"><td class="py-1.5 font-mono align-top text-green-700">remark_import_log <span class="text-[10px]">(v1.9)</span></td><td class="py-1.5">file_name, items_updated, success, error, imported_by, created_at — 1 แถวต่อการนำเข้า 1 ครั้ง (ไม่ใช่ต่อข้อ)</td></tr>
+              <tr class="bg-green-50/40"><td class="py-1.5 font-mono align-top text-green-700">users.role <span class="text-[10px]">(v1.9)</span></td><td class="py-1.5">เพิ่มค่าที่ 6: <code class="bg-white px-1 rounded">marubeni</code> — บทบาทนอกสาย workflow ภายใน</td></tr>
             </tbody>
           </table>
         </div>
@@ -466,13 +464,10 @@
           <li><b>(v1.6)</b> 60 request/นาทีพอไหมสำหรับ automation แบบ batch — รอดูการใช้จริงเดือนแรก</li>
           <li><b>(v1.6)</b> เก็บ <code class="bg-slate-100 px-1 rounded">api_request_log</code> นานแค่ไหน — เสนอ 90 วัน ยังไม่ยืนยัน</li>
           <li><b>(v1.6)</b> ควรทำ <code class="bg-slate-100 px-1 rounded">openapi.json</code> + IP allowlist ต่อ token ไหม — ยังไม่ได้ตัดสินใจ (ดู § 8 P1 roadmap)</li>
-          <li><b class="text-amber-700">(v1.9 — blocking การเชื่อมต่อ)</b> ใครที่ AutoCorp/Marubeni อนุมัติ Box Custom App ระดับ enterprise ได้ — เป็นขั้นตอนนอกโค้ด ส่วนอื่นสร้างเสร็จแล้วแต่ยังยิงไป Box ไม่ได้ถ้าไม่มีอันนี้</li>
-          <li><b class="text-amber-700">(v1.9 — blocking การ push)</b> ความปลอดภัยเมื่อแก้พร้อมกัน — push คือ ดาวน์โหลด→แก้→อัปโหลด ถ้ามีคนแก้ไฟล์ใน Box จังหวะเดียวกันงานเขาอาจถูกทับ ต้องใส่การตรวจเวอร์ชันตอนอัปโหลดก่อนเปิดใช้จริง</li>
-          <li><b>(v1.9)</b> ความถี่ poll ที่เหมาะสม — เสนอ 15–30 นาที ยังไม่ยืนยัน</li>
-          <li><b>(v1.9)</b> การส่งกลับ Box ควรทำเมื่อ status เปลี่ยนเท่านั้น หรือรวม Owner/Evidence ด้วย — เสนอเฉพาะ status ก่อน</li>
-          <li><b>(v1.9)</b> <code class="bg-slate-100 px-1 rounded">self_assessment_note</code> (import ครั้งเดียว แช่ไว้) กับ <code class="bg-slate-100 px-1 rounded">box_remark</code> (sync สด) มาจากคอลัมน์เดียวกันในไฟล์ — ตั้งใจให้แยกกัน แต่ต้องยืนยันว่าคนตรวจจริงอ่านแล้วไม่สับสนว่าเป็นฟิลด์เดียวกันที่ค่าไม่ตรงกัน</li>
-          <li><b class="text-amber-700">(v1.9, proposed — blocking ก่อนออกบัญชีจริง)</b> role <code class="bg-slate-100 px-1 rounded">marubeni</code> คือการเปิดให้คนนอก AutoCorp login เข้าระบบได้จริงเป็นครั้งแรก — ต้องขอ go-ahead จากเจ้าของนโยบายข้อมูลก่อน ไม่ใช่แค่ตัดสินใจเชิงเทคนิค</li>
-          <li><b>(v1.9, proposed)</b> <code class="bg-slate-100 px-1 rounded">marubeni</code> ควรเห็นประวัติ workflow/comment ภายใน (Reviewer/Approver) ด้วยไหม — ค่าเริ่มต้นที่เสนอคือ "ไม่เห็น" (เหมือน scope history:read ของ External API)</li>
+          <li><b class="text-amber-700">(v1.9 — blocking ก่อนออกบัญชีจริง)</b> role <code class="bg-slate-100 px-1 rounded">marubeni</code> คือการเปิดให้คนนอก AutoCorp login เข้าระบบได้จริงเป็นครั้งแรก — ต้องขอ go-ahead จากเจ้าของนโยบายข้อมูลก่อน ไม่ใช่แค่ตัดสินใจเชิงเทคนิค</li>
+          <li><b>(v1.9)</b> <code class="bg-slate-100 px-1 rounded">marubeni</code> ควรเห็นประวัติ workflow/comment ภายใน (Reviewer/Approver) ด้วยไหม — ค่าเริ่มต้นที่เสนอคือ "ไม่เห็น"</li>
+          <li><b>(v1.9)</b> <code class="bg-slate-100 px-1 rounded">self_assessment_note</code> (แช่ไว้ตอน seed) กับ <code class="bg-slate-100 px-1 rounded">box_remark</code> (อัปเดตทุกครั้งที่ import) มาจากคอลัมน์เดียวกัน — ตั้งใจให้แยกกัน แต่ต้องยืนยันว่าคนตรวจอ่านแล้วไม่สับสน</li>
+          <li><b>(v1.9)</b> Marubeni อัปเดตไฟล์บ่อยแค่ไหน — ถ้ากลายเป็นทุกสัปดาห์ ค่อยกลับมาคิดเรื่องดึงอัตโนมัติ</li>
         </ul>
       </div>
     </section>
