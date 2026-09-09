@@ -352,6 +352,15 @@ alter table item_status add column if not exists self_assessment_note text not n
 -- the `marubeni` role. See PRD.md § 13 for the full spec and § 13.7 for the
 -- role. Safe to re-run.
 --
+-- Corrected design (2026-09-09, stakeholder): this is NOT the Box Comments
+-- API. It's the content of one cell per row — the "Remarks Column (Reasons
+-- for the Check Results, etc.)" already read once, offline, by
+-- scripts/extract-xlsx.py into self_assessment_note — read/written live in
+-- the single master checklist workbook shared on Box. There is exactly one
+-- Box file for the whole system, not one per item (an earlier draft of this
+-- migration wrongly modeled it as a per-item folder link; that version was
+-- never applied to production and is fully replaced here, not layered on).
+--
 -- This migration only adds columns/tables/roles the *application* can use
 -- once a real Box Custom App exists (PRD.md § 13.6, § 9 — still an open,
 -- blocking dependency outside this codebase). Running this SQL does not by
@@ -371,42 +380,54 @@ alter table users add constraint users_role_check
   check (role in ('admin', 'user', 'reviewer', 'approver', 'read_only', 'marubeni'));
 
 -- ---------------------------------------------------------------------------
--- item_status: Box folder link + the synced/authored Remark. Deliberately
--- separate from `status`/`workflow_state` (never written by the Box sync —
--- decision D2, PRD.md § 13.2) and from `self_assessment_note` (a frozen
--- snapshot of the FY2026 workbook import, not a live sync target).
+-- box_checklist_source: a SINGLE, system-wide Box link to the master
+-- checklist workbook (there is only one workbook, not one per item — see
+-- the note above). Enforced as a singleton via the `id = 1` check.
 -- ---------------------------------------------------------------------------
-alter table item_status add column if not exists box_url            text not null default '';
-alter table item_status add column if not exists box_remark         text not null default '';
-alter table item_status add column if not exists box_remark_by      text not null default '';
-alter table item_status add column if not exists box_remark_at      timestamptz;
-alter table item_status add column if not exists box_remark_source  text; -- 'box' | 'app', null until first remark
+create table if not exists box_checklist_source (
+  id         int primary key default 1 check (id = 1),
+  box_url    text not null default '',
+  updated_by uuid references users (id) on delete set null,
+  updated_at timestamptz not null default now()
+);
+insert into box_checklist_source (id) values (1) on conflict (id) do nothing;
+
+-- ---------------------------------------------------------------------------
+-- item_status: the synced/authored Remark, per item. Deliberately separate
+-- from `status`/`workflow_state` (never written by the Box sync — decision
+-- D2, PRD.md § 13.2) and from `self_assessment_note` (a frozen snapshot of
+-- the FY2026 workbook import — this is the live-synced counterpart of the
+-- same underlying Remarks-column cell, not the same field).
+-- ---------------------------------------------------------------------------
+alter table item_status add column if not exists box_remark        text not null default '';
+alter table item_status add column if not exists box_remark_by     text not null default ''; -- blank when box_remark_source='box' — a spreadsheet cell has no author metadata
+alter table item_status add column if not exists box_remark_at     timestamptz;
+alter table item_status add column if not exists box_remark_source text; -- 'box' | 'app', null until first remark
 alter table item_status drop constraint if exists item_status_box_remark_source_check;
 alter table item_status add constraint item_status_box_remark_source_check
   check (box_remark_source is null or box_remark_source in ('box', 'app'));
-alter table item_status add column if not exists box_sync_file_id   text; -- which file in the folder is the active thread (pull bookkeeping)
-alter table item_status add column if not exists box_last_comment_id text; -- dedupe + loop-prevention bookkeeping (pull)
 
 -- ---------------------------------------------------------------------------
 -- box_sync_log: append-only audit trail for every pull/push attempt,
 -- automatic or manually triggered — mirrors api_request_log's role (v1.6).
 -- `triggered_by` is set only for a manual "Sync to Box" (marubeni/admin);
 -- null for the automatic push-on-status-change and the scheduled pull.
+-- `item_no` is nullable because a `pull` refreshes every item from one
+-- workbook download in a single pass — not naturally one row per item.
 -- ---------------------------------------------------------------------------
 create table if not exists box_sync_log (
-  id            bigint generated always as identity primary key,
-  item_no       int not null references checklist_items (no) on delete cascade,
-  direction     text not null check (direction in ('pull', 'push')),
-  box_file_id   text,
-  box_comment_id text,
-  remark_text   text,
-  success       boolean not null,
-  error         text,
-  triggered_by  uuid references users (id) on delete set null,
-  created_at    timestamptz not null default now()
+  id           bigint generated always as identity primary key,
+  item_no      int references checklist_items (no) on delete cascade,
+  direction    text not null check (direction in ('pull', 'push')),
+  remark_text  text,
+  success      boolean not null,
+  error        text,
+  triggered_by uuid references users (id) on delete set null,
+  created_at   timestamptz not null default now()
 );
 
 create index if not exists box_sync_log_item_no_idx on box_sync_log (item_no, created_at desc);
 
-alter table box_sync_log enable row level security;
+alter table box_checklist_source enable row level security;
+alter table box_sync_log         enable row level security;
 -- Same default-deny posture as every other table — service role (BFF) only.

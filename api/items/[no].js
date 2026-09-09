@@ -7,11 +7,7 @@ import { STATUSES as VALID_STATUSES } from "../../lib/checklistEnums.js";
 // it's a reference to external work, not compliance evidence, and stays
 // editable regardless of workflow_state.
 const LOCKABLE_FIELDS = ["owner", "note"];
-// v1.9 (proposed): box_url follows the same rule as clickup_url — a
-// reference link, not compliance evidence, so it stays editable regardless
-// of workflow_state. It is NOT box_remark — that's marubeni/admin-only,
-// via the dedicated PATCH .../box-remark endpoint.
-const ALWAYS_EDITABLE_FIELDS = ["clickup_url", "box_url"];
+const ALWAYS_EDITABLE_FIELDS = ["clickup_url"];
 
 export default async function handler(req, res) {
   if (req.method !== "PATCH") {
@@ -33,42 +29,17 @@ export default async function handler(req, res) {
 
   const supabase = getSupabase();
 
-  // box_url (v1.9, proposed) may not exist yet if this ships before that
-  // migration runs — degrade gracefully rather than breaking owner/note/
-  // clickup_url/status edits for everyone in the meantime.
-  const UNDEFINED_COLUMN = "42703";
-  let existing, boxColumnMissing = false;
-  {
-    const { data, error } = await supabase
-      .from("item_status")
-      .select("status, owner, note, clickup_url, box_url, workflow_state")
-      .eq("item_no", itemNo)
-      .maybeSingle();
-    if (error?.code === UNDEFINED_COLUMN) {
-      boxColumnMissing = true;
-      const retry = await supabase
-        .from("item_status")
-        .select("status, owner, note, clickup_url, workflow_state")
-        .eq("item_no", itemNo)
-        .maybeSingle();
-      existing = retry.data ? { ...retry.data, box_url: "" } : retry.data;
-      if (retry.error) {
-        res.status(500).json({ error: "Failed to load current status" });
-        return;
-      }
-    } else if (error) {
-      res.status(500).json({ error: "Failed to load current status" });
-      return;
-    } else {
-      existing = data;
-    }
+  const { data: existing, error: fetchErr } = await supabase
+    .from("item_status")
+    .select("status, owner, note, clickup_url, workflow_state")
+    .eq("item_no", itemNo)
+    .maybeSingle();
+  if (fetchErr) {
+    res.status(500).json({ error: "Failed to load current status" });
+    return;
   }
   if (!existing) {
     res.status(404).json({ error: "Item not found" });
-    return;
-  }
-  if (boxColumnMissing && "box_url" in (req.body || {})) {
-    res.status(501).json({ error: "Box Remark Sync (v1.9) columns are not migrated yet — see supabase/schema.sql" });
     return;
   }
 
