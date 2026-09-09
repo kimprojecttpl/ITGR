@@ -215,6 +215,11 @@ function officialScore(filterFn){
   return {num,den,pct,impl,rel,na,answered,grade: pct===null?null:gradeFor(pct)};
 }
 function hasSelfAssessment(){ return ITEMS.some(it=>(STATE[it.no]&&STATE[it.no].selfAssessment)); }
+// v1.9 — the row flag and the Remark filter both hide entirely until at
+// least one Remark has been imported, so an un-imported dashboard doesn't
+// carry controls that can only ever return nothing.
+function hasBoxRemarks(){ return ITEMS.some(it=>(STATE[it.no]&&STATE[it.no].boxRemark)); }
+function hasRemark(no){ return !!(STATE[no]&&STATE[no].boxRemark); }
 function officialOverall(){
   if(!CATS.length) return null;
   const per=CATS.map(c=>officialScore(i=>i.catNo===c.no));
@@ -223,7 +228,7 @@ function officialOverall(){
   return {mean:Math.round(mean*100)/100, grade, per};
 }
 
-let TAB="overview", FILTERS={cat:"",risk:"",pri:"",status:"",type:"",q:""}, EXPANDED={};
+let TAB="overview", FILTERS={cat:"",risk:"",pri:"",status:"",type:"",q:"",remark:""}, EXPANDED={};
 function setTab(t){ TAB=t; if(t==='admin' && isAdmin()) loadAdminData(); render(); }
 
 function render(){
@@ -478,6 +483,8 @@ function tracker(){
     if(FILTERS.pri && it.priority!==FILTERS.pri) return false;
     if(FILTERS.type && !it.qtype.startsWith(FILTERS.type)) return false;
     if(FILTERS.status){ const st=(STATE[it.no]&&STATE[it.no].status)||"Not Started"; if(st!==FILTERS.status) return false; }
+    if(FILTERS.remark==='yes' && !hasRemark(it.no)) return false;
+    if(FILTERS.remark==='no' && hasRemark(it.no)) return false;
     // Search spans both languages regardless of the active one — a Thai query
 // should still find an item whose translation is missing, and vice versa.
     if(FILTERS.q){ const q=FILTERS.q.toLowerCase();
@@ -519,7 +526,7 @@ function tracker(){
         <td class="px-2 py-2 text-center"><button onclick="toggleRow(${it.no})" class="text-blue-600 font-bold w-5">${open?'−':'+'}</button></td>
         <td class="px-2 py-2 text-center text-slate-400 text-xs">${it.no}</td>
         <td class="px-2 py-2 text-xs text-slate-500 min-w-[130px]">${it.catNo}. ${esc(itemCatLabel(it))}</td>
-        <td class="px-2 py-2 text-sm text-slate-700 font-medium min-w-[220px]">${esc(fieldOf(it,'name'))}</td>
+        <td class="px-2 py-2 text-sm text-slate-700 font-medium min-w-[220px]">${esc(fieldOf(it,'name'))}${hasRemark(it.no)?` <span title="${t('มี Remark จากไฟล์ checklist ของ Marubeni — กด + เพื่อดู','Has a Remark from Marubeni\'s checklist workbook — expand to read it')}" class="text-sky-500 text-xs align-middle">\u{1F4AC}</span>`:''}</td>
         <td class="px-2 py-2 text-center"><span class="text-[11px] px-2 py-0.5 rounded-full ${RISK_BG[it.risk]} whitespace-nowrap inline-block leading-tight">${riskLabel(it.risk)}</span></td>
         <td class="px-2 py-2 text-center text-xs">${it.priority==='◎'?`<span title="${t('สูงสุด','Top Priority')}" class="text-orange-600 font-bold">◎</span>`:(it.priority==='〇'?`<span title="${t('สำคัญ','Priority')}" class="text-blue-600">〇</span>`:'<span class="text-slate-300">–</span>')}</td>
         <td class="px-2 py-2 text-center text-xs text-slate-400 whitespace-nowrap">§${esc(it.article)}</td>
@@ -568,6 +575,7 @@ function tracker(){
         ${sel('fpri',[['◎','◎ '+t('สูงสุด','Top Priority')],['〇','〇 '+t('สำคัญ','Priority')]],FILTERS.pri,t('ทุกลำดับความสำคัญ','All priority'))}
         ${sel('ftype',[['①',t('① ด้านระบบ','① System-related')],['②-1',t('②-1 ด้านการปฏิบัติงาน (สำคัญ)','②-1 Operations (significant)')],['②-2',t('②-2 ด้านการปฏิบัติงาน (อื่น ๆ)','②-2 Operations (other)')]],FILTERS.type,t('ทุกประเภทคำถาม','All types'))}
         ${sel('fstatus',STATUSES.map(s=>[s,statusLabel(s)]),FILTERS.status,t('ทุกสถานะ','All status'))}
+        ${hasBoxRemarks()?sel('fremark',[['yes',t('\u{1F4AC} มี Remark จาก Marubeni','\u{1F4AC} Has a Marubeni Remark')],['no',t('ยังไม่มี Remark','No Remark yet')]],FILTERS.remark,t('Remark ทั้งหมด','Any Remark')):''}
         <button onclick="clearFilters()" class="text-xs px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600">${t('ล้างตัวกรอง','Clear')}</button>
         <button onclick="window.print()" class="text-xs px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white">\u{1F5A8}️ ${t('พิมพ์ / PDF','Print · PDF')}</button>
       </div>
@@ -1172,9 +1180,9 @@ function remarkImportCard(){
     :''}
   </div>`;
 }
-function clearFilters(){ FILTERS={cat:"",risk:"",pri:"",status:"",type:"",q:""}; render(); }
+function clearFilters(){ FILTERS={cat:"",risk:"",pri:"",status:"",type:"",q:"",remark:""}; render(); }
 function bind(){
-  ['fcat','frisk','fpri','ftype','fstatus'].forEach(id=>{ const e=document.getElementById(id); if(e) e.onchange=()=>{ FILTERS[id.slice(1)]=e.value; render(); }; });
+  ['fcat','frisk','fpri','ftype','fstatus','fremark'].forEach(id=>{ const e=document.getElementById(id); if(e) e.onchange=()=>{ FILTERS[id.slice(1)]=e.value; render(); }; });
   const fq=document.getElementById('fq');
   if(fq) fq.oninput=()=>{ FILTERS.q=fq.value; render(); const n=document.getElementById('fq'); if(n){n.focus();n.setSelectionRange(n.value.length,n.value.length);} };
 }
